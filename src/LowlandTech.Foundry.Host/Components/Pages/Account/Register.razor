@@ -1,0 +1,118 @@
+@page "/account/register"
+@using LowlandTech.Foundry.Host.Services
+@inject IAuthService AuthService
+@inject ApiAuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Register - Foundry</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-8">
+        <MudText Typo="Typo.h4" Class="mb-4" Align="Align.Center">Create Account</MudText>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+        }
+
+        @if (_registrationComplete)
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4">
+                Registration successful! You can now sign in.
+            </MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Href="/account/login">
+                Go to Login
+            </MudButton>
+        }
+        else
+        {
+            <MudForm @ref="_form" @bind-IsValid="@_isValid">
+                <MudTextField @bind-Value="_email"
+                              Label="Email"
+                              InputType="InputType.Email"
+                              Required="true"
+                              RequiredError="Email is required"
+                              Validation="@(new EmailAddressAttribute() { ErrorMessage = "Invalid email address" })"
+                              Class="mb-4" />
+
+                <MudTextField @bind-Value="_password"
+                              Label="Password"
+                              InputType="InputType.Password"
+                              Required="true"
+                              RequiredError="Password is required"
+                              Validation="@(new MinLengthAttribute(6) { ErrorMessage = "Password must be at least 6 characters" })"
+                              Class="mb-4" />
+
+                <MudTextField @bind-Value="_confirmPassword"
+                              Label="Confirm Password"
+                              InputType="InputType.Password"
+                              Required="true"
+                              RequiredError="Please confirm your password"
+                              Validation="@(new Func<string, string?>(ValidatePasswordMatch))"
+                              Class="mb-4" />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Disabled="@(!_isValid || _isLoading)"
+                           OnClick="HandleRegister"
+                           Class="mb-4">
+                    @if (_isLoading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    Create Account
+                </MudButton>
+            </MudForm>
+
+            <MudDivider Class="my-4" />
+
+            <MudText Align="Align.Center">
+                Already have an account?
+                <MudLink Href="/account/login">Sign in here</MudLink>
+            </MudText>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private MudForm _form = null!;
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private string? _errorMessage;
+    private bool _isValid;
+    private bool _isLoading;
+    private bool _registrationComplete;
+
+    private string? ValidatePasswordMatch(string confirmPassword)
+    {
+        if (confirmPassword != _password)
+            return "Passwords do not match";
+        return null;
+    }
+
+    private async Task HandleRegister()
+    {
+        _errorMessage = null;
+        _isLoading = true;
+
+        try
+        {
+            var result = await AuthService.RegisterAsync(_email, _password);
+
+            if (result.Success)
+            {
+                _registrationComplete = true;
+            }
+            else
+            {
+                _errorMessage = result.Error ?? "Registration failed";
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

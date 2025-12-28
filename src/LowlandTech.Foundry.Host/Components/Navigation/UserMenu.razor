@@ -1,13 +1,42 @@
-<MudMenu AnchorOrigin="Origin.BottomRight"
-         TransformOrigin="Origin.TopRight"
-         Dense="true">
-    <ActivatorContent>
-        <MudIconButton Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" />
-    </ActivatorContent>
-    <ChildContent>
-        <MudMenuItem Icon="@Icons.Material.Filled.Person">Profile</MudMenuItem>
-        <MudMenuItem Icon="@Icons.Material.Filled.Settings">Settings</MudMenuItem>
-        <MudDivider />
-        <MudMenuItem Icon="@Icons.Material.Filled.Logout">Logout</MudMenuItem>
-    </ChildContent>
-</MudMenu>
+@using LowlandTech.Foundry.Host.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IAuthService AuthService
+@inject ApiAuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<AuthorizeView>
+    <Authorized>
+        <MudMenu AnchorOrigin="Origin.BottomRight"
+                 TransformOrigin="Origin.TopRight"
+                 Dense="true">
+            <ActivatorContent>
+                <MudTooltip Text="@context.User.Identity?.Name">
+                    <MudIconButton Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" />
+                </MudTooltip>
+            </ActivatorContent>
+            <ChildContent>
+                <MudMenuItem Icon="@Icons.Material.Filled.Person" Href="/account/profile">Profile</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.Settings" Href="/settings">Settings</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="HandleLogout">Logout</MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+    </Authorized>
+    <NotAuthorized>
+        <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/account/login" Class="mr-2">
+            Sign In
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Href="/account/register">
+            Register
+        </MudButton>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        AuthStateProvider.NotifyAuthenticationStateChanged();
+        Navigation.NavigateTo("/");
+    }
+}

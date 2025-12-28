@@ -1,10 +1,15 @@
 using LowlandTech.Foundry.Host.Components;
+using LowlandTech.Foundry.Host.Services;
 using LowlandTech.Foundry.PluginCore.Extensions;
 using LowlandTech.Foundry.PluginCore.Theming;
 using LowlandTech.Foundry.PremiumTheme.Extensions;
+using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add service defaults (OpenTelemetry, health checks, service discovery)
+builder.AddServiceDefaults();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -27,7 +32,26 @@ builder.Services.AddFoundryTheming(options =>
     options.AddPremiumThemes(); // Add premium themes from plugin
 });
 
+// Configure HttpClient for API communication with service discovery
+builder.Services.AddHttpClient("api", client =>
+{
+    client.BaseAddress = new Uri("https+http://api");
+});
+
+// Add authentication services
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ApiAuthenticationStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
+    sp.GetRequiredService<ApiAuthenticationStateProvider>());
+
+// Add authorization
+builder.Services.AddAuthorizationCore();
+builder.Services.AddCascadingAuthenticationState();
+
 var app = builder.Build();
+
+// Map service default endpoints (health checks)
+app.MapDefaultEndpoints();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

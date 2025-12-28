@@ -1,0 +1,6 @@
+@LowlandTech.Foundry.Api_HostAddress = http://localhost:5034
+
+GET {{LowlandTech.Foundry.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
