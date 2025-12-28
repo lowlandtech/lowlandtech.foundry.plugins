@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject IThemeService ThemeService
 
-<MudThemeProvider />
+<MudThemeProvider @bind-IsDarkMode="@_isDarkMode" Theme="@ThemeService.MudTheme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -16,6 +18,11 @@
         <MudSpacer />
         <MudText Typo="Typo.h6">Full Screen Mode</MudText>
         <MudSpacer />
+        <MudTooltip Text="@(_isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")">
+            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                           Color="Color.Inherit"
+                           OnClick="@ToggleDarkMode" />
+        </MudTooltip>
     </MudAppBar>
 
     <div class="fullscreen-content">
@@ -35,3 +42,29 @@
         padding: 1rem;
     }
 </style>
+
+@code {
+    private bool _isDarkMode;
+
+    protected override void OnInitialized()
+    {
+        _isDarkMode = ThemeService.IsDarkMode;
+        ThemeService.OnThemeChanged += HandleThemeChanged;
+    }
+
+    private void ToggleDarkMode()
+    {
+        ThemeService.ToggleDarkMode();
+    }
+
+    private void HandleThemeChanged()
+    {
+        _isDarkMode = ThemeService.IsDarkMode;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= HandleThemeChanged;
+    }
+}

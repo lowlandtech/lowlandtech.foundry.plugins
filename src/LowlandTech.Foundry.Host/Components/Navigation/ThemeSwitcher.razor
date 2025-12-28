@@ -1,0 +1,32 @@
+@inject IThemeService ThemeService
+
+@if (ThemeService.AvailableThemes.Count > 1)
+{
+    <MudTooltip Text="Switch Theme">
+        <MudMenu Icon="@Icons.Material.Filled.Palette"
+                 Color="Color.Inherit"
+                 AnchorOrigin="Origin.BottomCenter"
+                 TransformOrigin="Origin.TopCenter"
+                 Dense="true">
+            @foreach (var theme in ThemeService.AvailableThemes)
+            {
+                <MudMenuItem OnClick="@(() => SelectTheme(theme))"
+                             Icon="@(IsCurrentTheme(theme) ? Icons.Material.Filled.Check : null)">
+                    @theme.DisplayName
+                </MudMenuItem>
+            }
+        </MudMenu>
+    </MudTooltip>
+}
+
+@code {
+    private bool IsCurrentTheme(ITheme theme)
+    {
+        return ThemeService.CurrentTheme.Name == theme.Name;
+    }
+
+    private void SelectTheme(ITheme theme)
+    {
+        ThemeService.SetTheme(theme);
+    }
+}

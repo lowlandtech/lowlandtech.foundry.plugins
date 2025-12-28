@@ -1,25 +1,32 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject IPluginMenuProvider MenuProvider
+@inject IThemeService ThemeService
 
-<MudThemeProvider @bind-IsDarkMode="@_isDarkMode" Theme="_theme" />
+<MudThemeProvider @bind-IsDarkMode="@_isDarkMode" Theme="@ThemeService.MudTheme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout>
     <MudAppBar Elevation="1" Dense="true">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu"
-                       Color="Color.Inherit"
-                       Edge="Edge.Start"
-                       OnClick="@ToggleDrawer" />
+        <button class="@HamburgerClass" @onclick="@ToggleDrawer" aria-label="Toggle navigation">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
         <MudText Typo="Typo.h6" Class="ml-3">Foundry</MudText>
         <MudSpacer />
 
         <TopbarNav />
 
-        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                       Color="Color.Inherit"
-                       OnClick="@ToggleDarkMode" />
+        <ThemeSwitcher />
+
+        <MudTooltip Text="@(_isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")">
+            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                           Color="Color.Inherit"
+                           OnClick="@ToggleDarkMode" />
+        </MudTooltip>
 
         <UserMenu />
     </MudAppBar>
@@ -27,8 +34,7 @@
     <MudDrawer @bind-Open="@_drawerOpen"
                Elevation="2"
                ClipMode="DrawerClipMode.Always"
-               Variant="@DrawerVariant.Mini"
-               OpenMiniOnHover="true">
+               Variant="@DrawerVariant.Responsive">
         <MudDrawerHeader>
             <MudText Typo="Typo.h6">Navigation</MudText>
         </MudDrawerHeader>
@@ -50,23 +56,15 @@
 
 @code {
     private bool _drawerOpen = true;
-    private bool _isDarkMode = false;
+    private bool _isDarkMode;
 
-    private MudTheme _theme = new()
+    private string HamburgerClass => _drawerOpen ? "hamburger-btn open" : "hamburger-btn";
+
+    protected override void OnInitialized()
     {
-        PaletteLight = new PaletteLight
-        {
-            Primary = Colors.Blue.Darken1,
-            Secondary = Colors.DeepPurple.Accent2,
-            AppbarBackground = Colors.Blue.Darken2
-        },
-        PaletteDark = new PaletteDark
-        {
-            Primary = Colors.Blue.Lighten1,
-            Secondary = Colors.DeepPurple.Accent2,
-            AppbarBackground = Colors.Blue.Darken4
-        }
-    };
+        _isDarkMode = ThemeService.IsDarkMode;
+        ThemeService.OnThemeChanged += HandleThemeChanged;
+    }
 
     private void ToggleDrawer()
     {
@@ -75,6 +73,17 @@
 
     private void ToggleDarkMode()
     {
-        _isDarkMode = !_isDarkMode;
+        ThemeService.ToggleDarkMode();
+    }
+
+    private void HandleThemeChanged()
+    {
+        _isDarkMode = ThemeService.IsDarkMode;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= HandleThemeChanged;
     }
 }

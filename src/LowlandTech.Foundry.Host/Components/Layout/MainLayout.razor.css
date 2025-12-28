@@ -76,6 +76,53 @@ main {
     }
 }
 
+/* Animated hamburger button */
+.hamburger-btn {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 40px;
+    height: 40px;
+    padding: 11px 10px;
+    margin-left: -16px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.hamburger-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.hamburger-btn:focus {
+    outline: none;
+}
+
+.hamburger-btn span {
+    display: block;
+    height: 2px;
+    width: 100%;
+    background-color: currentColor;
+    border-radius: 1px;
+    transition: all 0.3s ease-in-out;
+    transform-origin: center;
+}
+
+.hamburger-btn.open span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+
+.hamburger-btn.open span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+}
+
+.hamburger-btn.open span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+}
+
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;

@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\LowlandTech.Foundry.PluginCore\LowlandTech.Foundry.PluginCore.csproj" />
     <ProjectReference Include="..\LowlandTech.Foundry.SamplePlugin\LowlandTech.Foundry.SamplePlugin.csproj" />
+    <ProjectReference Include="..\LowlandTech.Foundry.PremiumTheme\LowlandTech.Foundry.PremiumTheme.csproj" />
   </ItemGroup>
 
   <ItemGroup>
