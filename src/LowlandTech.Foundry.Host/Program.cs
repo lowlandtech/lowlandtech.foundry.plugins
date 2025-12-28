@@ -21,8 +21,11 @@ builder.Services.AddRazorComponents()
 // Add MudBlazor
 builder.Services.AddMudServices();
 
-// Add plugin system - include assemblies from plugins
+// Add plugin system with dynamic loading from configuration
+// The SamplePlugin assembly is included for backward compatibility
+// Additional plugins can be loaded from folders or NuGet via appsettings.json
 builder.Services.AddPluginSystem(
+    builder.Configuration,
     typeof(LowlandTech.Foundry.SamplePlugin._Imports).Assembly
 );
 
