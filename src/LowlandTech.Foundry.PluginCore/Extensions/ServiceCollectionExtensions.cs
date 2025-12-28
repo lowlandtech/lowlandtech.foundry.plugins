@@ -37,10 +37,11 @@ public static class ServiceCollectionExtensions
         }
 
         // Register theme service
-        services.AddSingleton<IThemeService>(sp =>
+        services.AddScoped<IThemeService>(sp =>
         {
             var themes = sp.GetServices<ITheme>();
-            return new ThemeService(themes, options.DefaultToDarkMode);
+            var storageProvider = sp.GetService<IThemeStorageProvider>();
+            return new ThemeService(themes, storageProvider, options.DefaultToDarkMode);
         });
 
         return services;

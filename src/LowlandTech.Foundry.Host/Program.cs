@@ -6,6 +6,9 @@ using LowlandTech.Foundry.PremiumTheme.Extensions;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor.Services;
 
+// Make IThemeStorageProvider available
+using IThemeStorageProvider = LowlandTech.Foundry.PluginCore.Theming.IThemeStorageProvider;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults (OpenTelemetry, health checks, service discovery)
@@ -22,6 +25,9 @@ builder.Services.AddMudServices();
 builder.Services.AddPluginSystem(
     typeof(LowlandTech.Foundry.SamplePlugin._Imports).Assembly
 );
+
+// Add theme storage provider for persistence
+builder.Services.AddScoped<IThemeStorageProvider, ThemeStorageProvider>();
 
 // Add theming with multiple themes
 builder.Services.AddFoundryTheming(options =>

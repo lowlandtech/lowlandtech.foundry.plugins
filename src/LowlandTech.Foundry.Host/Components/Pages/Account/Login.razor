@@ -31,6 +31,11 @@
                           RequiredError="Password is required"
                           Class="mb-4" />
 
+            <MudCheckBox @bind-Value="_rememberMe"
+                         Label="Remember me"
+                         Color="Color.Primary"
+                         Class="mb-4" />
+
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
                        FullWidth="true"
@@ -61,6 +66,7 @@
     private string? _errorMessage;
     private bool _isValid;
     private bool _isLoading;
+    private bool _rememberMe;
 
     [SupplyParameterFromQuery]
     public string? ReturnUrl { get; set; }
@@ -72,7 +78,7 @@
 
         try
         {
-            var result = await AuthService.LoginAsync(_email, _password);
+            var result = await AuthService.LoginAsync(_email, _password, _rememberMe);
 
             if (result.Success)
             {

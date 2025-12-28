@@ -1,0 +1,321 @@
+@page "/account/profile"
+@using LowlandTech.Foundry.Host.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IAuthService AuthService
+
+<PageTitle>Profile - Foundry</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">My Profile</MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_profile == null)
+    {
+        <MudAlert Severity="Severity.Error">Failed to load profile</MudAlert>
+    }
+    else
+    {
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+            <MudTabPanel Text="Personal Information" Icon="@Icons.Material.Filled.Person">
+                @if (!string.IsNullOrEmpty(_profileMessage))
+                {
+                    <MudAlert Severity="@_profileSeverity" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="() => _profileMessage = null">
+                        @_profileMessage
+                    </MudAlert>
+                }
+
+                <MudForm @ref="_profileForm" @bind-IsValid="_profileValid">
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.subtitle1" Class="mb-2">Account Information</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Value="@_profile.Email" Label="Email" ReadOnly="true" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Value="@_profile.UserName" Label="Username" ReadOnly="true" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Member since @_profile.CreatedAt.ToString("MMMM d, yyyy")
+                                @if (_profile.UpdatedAt.HasValue)
+                                {
+                                    <text> | Last updated @_profile.UpdatedAt.Value.ToString("MMMM d, yyyy")</text>
+                                }
+                            </MudText>
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudDivider Class="my-4" />
+                            <MudText Typo="Typo.subtitle1" Class="mb-2">Personal Details</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_firstName" Label="First Name" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_lastName" Label="Last Name" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_displayName" Label="Display Name" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_phoneNumber" Label="Phone Number" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudDivider Class="my-4" />
+                            <MudText Typo="Typo.subtitle1" Class="mb-2">Address</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_addressLine1" Label="Address Line 1" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_addressLine2" Label="Address Line 2" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_city" Label="City" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_state" Label="State / Province" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_postalCode" Label="Postal Code" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_country" Label="Country" Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" Class="d-flex justify-end">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="SaveProfile"
+                                       Disabled="_isSaving">
+                                @if (_isSaving)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                Save Changes
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudForm>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Security" Icon="@Icons.Material.Filled.Security">
+                @if (!string.IsNullOrEmpty(_passwordMessage))
+                {
+                    <MudAlert Severity="@_passwordSeverity" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="() => _passwordMessage = null">
+                        @_passwordMessage
+                    </MudAlert>
+                }
+
+                <MudText Typo="Typo.subtitle1" Class="mb-4">Change Password</MudText>
+
+                <MudForm @ref="_passwordForm" @bind-IsValid="_passwordValid">
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_currentPassword"
+                                          Label="Current Password"
+                                          InputType="InputType.Password"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Current password is required" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6" />
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_newPassword"
+                                          Label="New Password"
+                                          InputType="InputType.Password"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="New password is required"
+                                          Validation="@(new MinLengthAttribute(6) { ErrorMessage = "Password must be at least 6 characters" })" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_confirmNewPassword"
+                                          Label="Confirm New Password"
+                                          InputType="InputType.Password"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Please confirm your new password"
+                                          Validation="@(new Func<string, string?>(ValidatePasswordMatch))" />
+                        </MudItem>
+
+                        <MudItem xs="12" Class="d-flex justify-end">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="ChangePassword"
+                                       Disabled="@(!_passwordValid || _isChangingPassword)">
+                                @if (_isChangingPassword)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                Change Password
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudForm>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    private UserProfile? _profile;
+    private bool _isLoading = true;
+
+    // Profile form
+    private MudForm _profileForm = null!;
+    private bool _profileValid;
+    private bool _isSaving;
+    private string? _profileMessage;
+    private Severity _profileSeverity;
+
+    private string? _firstName;
+    private string? _lastName;
+    private string? _displayName;
+    private string? _phoneNumber;
+    private string? _addressLine1;
+    private string? _addressLine2;
+    private string? _city;
+    private string? _state;
+    private string? _postalCode;
+    private string? _country;
+
+    // Password form
+    private MudForm _passwordForm = null!;
+    private bool _passwordValid;
+    private bool _isChangingPassword;
+    private string? _passwordMessage;
+    private Severity _passwordSeverity;
+
+    private string _currentPassword = string.Empty;
+    private string _newPassword = string.Empty;
+    private string _confirmNewPassword = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfile();
+    }
+
+    private async Task LoadProfile()
+    {
+        _isLoading = true;
+        _profile = await AuthService.GetProfileAsync();
+
+        if (_profile != null)
+        {
+            _firstName = _profile.FirstName;
+            _lastName = _profile.LastName;
+            _displayName = _profile.DisplayName;
+            _phoneNumber = _profile.PhoneNumber;
+            _addressLine1 = _profile.Address?.Line1;
+            _addressLine2 = _profile.Address?.Line2;
+            _city = _profile.Address?.City;
+            _state = _profile.Address?.State;
+            _postalCode = _profile.Address?.PostalCode;
+            _country = _profile.Address?.Country;
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task SaveProfile()
+    {
+        _isSaving = true;
+        _profileMessage = null;
+
+        try
+        {
+            var request = new UpdateProfileRequest(
+                _firstName,
+                _lastName,
+                _displayName,
+                _phoneNumber,
+                new UpdateAddressRequest(
+                    _addressLine1,
+                    _addressLine2,
+                    _city,
+                    _state,
+                    _postalCode,
+                    _country
+                )
+            );
+
+            var result = await AuthService.UpdateProfileAsync(request);
+
+            if (result.Success)
+            {
+                _profileMessage = "Profile updated successfully";
+                _profileSeverity = Severity.Success;
+                await LoadProfile();
+            }
+            else
+            {
+                _profileMessage = result.Error ?? "Failed to update profile";
+                _profileSeverity = Severity.Error;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private string? ValidatePasswordMatch(string confirmPassword)
+    {
+        if (confirmPassword != _newPassword)
+            return "Passwords do not match";
+        return null;
+    }
+
+    private async Task ChangePassword()
+    {
+        _isChangingPassword = true;
+        _passwordMessage = null;
+
+        try
+        {
+            var result = await AuthService.ChangePasswordAsync(_currentPassword, _newPassword);
+
+            if (result.Success)
+            {
+                _passwordMessage = "Password changed successfully";
+                _passwordSeverity = Severity.Success;
+                _currentPassword = string.Empty;
+                _newPassword = string.Empty;
+                _confirmNewPassword = string.Empty;
+                await _passwordForm.ResetAsync();
+            }
+            else
+            {
+                _passwordMessage = result.Error ?? "Failed to change password";
+                _passwordSeverity = Severity.Error;
+            }
+        }
+        finally
+        {
+            _isChangingPassword = false;
+        }
+    }
+}

@@ -57,6 +57,7 @@
 @code {
     private bool _drawerOpen = true;
     private bool _isDarkMode;
+    private bool _themeInitialized;
 
     private string HamburgerClass => _drawerOpen ? "hamburger-btn open" : "hamburger-btn";
 
@@ -64,6 +65,17 @@
     {
         _isDarkMode = ThemeService.IsDarkMode;
         ThemeService.OnThemeChanged += HandleThemeChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_themeInitialized)
+        {
+            _themeInitialized = true;
+            await ThemeService.InitializeAsync();
+            _isDarkMode = ThemeService.IsDarkMode;
+            StateHasChanged();
+        }
     }
 
     private void ToggleDrawer()
