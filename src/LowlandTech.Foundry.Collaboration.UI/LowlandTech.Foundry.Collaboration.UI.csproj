@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.1" />
+    <PackageReference Include="MudBlazor" Version="8.15.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LowlandTech.Foundry.Collaboration\LowlandTech.Foundry.Collaboration.csproj" />
+    <ProjectReference Include="..\LowlandTech.Foundry.P2P.Core\LowlandTech.Foundry.P2P.Core.csproj" />
+    <ProjectReference Include="..\LowlandTech.Foundry.P2P.Crdt\LowlandTech.Foundry.P2P.Crdt.csproj" />
+  </ItemGroup>
+
+</Project>

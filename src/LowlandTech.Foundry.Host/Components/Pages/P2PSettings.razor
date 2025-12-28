@@ -1,0 +1,472 @@
+@page "/collaboration/settings"
+@using LowlandTech.Foundry.Host.Services
+@inject IP2PSettingsService P2PSettingsService
+@inject IConfiguration Configuration
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+@attribute [MenuItem(Title = "P2P Settings", Icon = Icons.Material.Filled.SettingsInputAntenna, Location = MenuLocation.Sidebar, Order = 11, ParentMenu = "Collaboration")]
+
+<PageTitle>P2P Settings</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">P2P Settings</MudText>
+    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+        Configure your peer-to-peer network settings
+    </MudText>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="d-block mx-auto my-8" />
+    }
+    else if (_settings == null)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4">
+            Please log in to manage your P2P settings.
+        </MudAlert>
+    }
+    else
+    {
+        @* Identity Section - User Settings *@
+        <MudPaper Class="pa-4 mb-4" Elevation="2">
+            <MudText Typo="Typo.h6" GutterBottom="true">
+                <MudIcon Icon="@Icons.Material.Filled.Badge" Class="mr-2" />
+                Your Identity
+            </MudText>
+
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_displayName"
+                                  Label="Display Name"
+                                  Variant="Variant.Outlined"
+                                  HelperText="This name will be visible to other peers" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Value="@(_settings.PeerId ?? "Not yet assigned")"
+                                  Label="Peer ID"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                                  OnAdornmentClick="CopyPeerId"
+                                  HelperText="Your unique peer identifier (read-only)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="_status"
+                               Label="Status"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Online")">Online</MudSelectItem>
+                        <MudSelectItem Value="@("Away")">Away</MudSelectItem>
+                        <MudSelectItem Value="@("Busy")">Do Not Disturb</MudSelectItem>
+                        <MudSelectItem Value="@("Invisible")">Invisible</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_statusMessage"
+                                  Label="Status Message"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="What are you working on?" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @* Discovery Section - User Settings *@
+        <MudPaper Class="pa-4 mb-4" Elevation="2">
+            <MudText Typo="Typo.h6" GutterBottom="true">
+                <MudIcon Icon="@Icons.Material.Filled.Wifi" Class="mr-2" />
+                Discovery
+            </MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudSwitch @bind-Value="_enableLanDiscovery"
+                               Label="Enable LAN Discovery"
+                               Color="Color.Primary" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Discover peers on your local network using mDNS
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudSwitch @bind-Value="_enableWanDiscovery"
+                               Label="Enable Internet Discovery"
+                               Color="Color.Primary" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Discover peers over the internet via signaling server
+                    </MudText>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @* Security Section - User Settings *@
+        <MudPaper Class="pa-4 mb-4" Elevation="2">
+            <MudText Typo="Typo.h6" GutterBottom="true">
+                <MudIcon Icon="@Icons.Material.Filled.Security" Class="mr-2" />
+                Security
+            </MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudSwitch @bind-Value="_requireVerification"
+                               Label="Require Peer Verification"
+                               Color="Color.Primary" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Only connect to cryptographically verified peers
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudSwitch @bind-Value="_autoAcceptTrusted"
+                               Label="Auto-accept Trusted Peers"
+                               Color="Color.Primary" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Automatically accept connection requests from trusted peers
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudSwitch Value="true"
+                               Label="End-to-End Encryption"
+                               Color="Color.Primary"
+                               Disabled="true"
+                               ReadOnly="true" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Always enabled - All communications are encrypted
+                    </MudText>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @* Plugin Sharing Section - User Settings *@
+        <MudPaper Class="pa-4 mb-4" Elevation="2">
+            <MudText Typo="Typo.h6" GutterBottom="true">
+                <MudIcon Icon="@Icons.Material.Filled.Extension" Class="mr-2" />
+                Plugin Sharing
+            </MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudSwitch @bind-Value="_enablePluginSharing"
+                               Label="Enable Plugin Sharing"
+                               Color="Color.Primary" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Share and receive plugins from peers
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudSwitch @bind-Value="_autoDownloadFromTrusted"
+                               Label="Auto-download from Trusted"
+                               Color="Color.Primary"
+                               Disabled="@(!_enablePluginSharing)" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Automatically download plugins from trusted peers
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudSwitch @bind-Value="_requireSignedPlugins"
+                               Label="Require Signed Plugins"
+                               Color="Color.Primary"
+                               Disabled="@(!_enablePluginSharing)" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Only accept plugins with valid signatures
+                    </MudText>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @* Trusted & Blocked Peers Section - User Settings *@
+        <MudPaper Class="pa-4 mb-4" Elevation="2">
+            <MudText Typo="Typo.h6" GutterBottom="true">
+                <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />
+                Peer Management
+            </MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.subtitle2" GutterBottom="true">Trusted Peers</MudText>
+                    @if (_settings.TrustedPeerIds.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">No trusted peers</MudText>
+                    }
+                    else
+                    {
+                        <MudList T="string" Dense="true">
+                            @foreach (var peerId in _settings.TrustedPeerIds)
+                            {
+                                <MudListItem T="string">
+                                    <div class="d-flex align-center justify-space-between">
+                                        <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 200px;">@peerId</MudText>
+                                        <MudIconButton Icon="@Icons.Material.Filled.RemoveCircle"
+                                                       Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => UntrustPeer(peerId))" />
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.subtitle2" GutterBottom="true">Blocked Peers</MudText>
+                    @if (_settings.BlockedPeerIds.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">No blocked peers</MudText>
+                    }
+                    else
+                    {
+                        <MudList T="string" Dense="true">
+                            @foreach (var peerId in _settings.BlockedPeerIds)
+                            {
+                                <MudListItem T="string">
+                                    <div class="d-flex align-center justify-space-between">
+                                        <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 200px;">@peerId</MudText>
+                                        <MudIconButton Icon="@Icons.Material.Filled.RemoveCircle"
+                                                       Size="Size.Small"
+                                                       Color="Color.Warning"
+                                                       OnClick="@(() => UnblockPeer(peerId))" />
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @* Actions for User Settings *@
+        <div class="d-flex gap-2 justify-end mb-6">
+            <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults" Disabled="_saving">
+                Reset to Defaults
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSettings" Disabled="_saving">
+                @if (_saving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Save Settings
+            </MudButton>
+        </div>
+
+        @* Server Configuration Section - Read Only *@
+        <MudDivider Class="my-4" />
+        <MudText Typo="Typo.h5" Class="mb-4">Server Configuration</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+            These settings are configured by the system administrator and cannot be modified here.
+        </MudText>
+
+        <MudPaper Class="pa-4 mb-4" Elevation="1" Style="background-color: var(--mud-palette-background-grey);">
+            <MudText Typo="Typo.h6" GutterBottom="true">
+                <MudIcon Icon="@Icons.Material.Filled.Router" Class="mr-2" />
+                Network Configuration
+            </MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Value="@_signalingServer"
+                                  Label="Signaling Server"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  HelperText="WebSocket URL for peer discovery" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudTextField Value="@_nodeMode"
+                                  Label="Node Mode"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  HelperText="How this node participates in the network" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField Value="@_stunServersDisplay"
+                                  Label="STUN Servers"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  Lines="2"
+                                  HelperText="Servers for NAT traversal" />
+                </MudItem>
+
+                @if (!string.IsNullOrEmpty(_turnServersDisplay))
+                {
+                    <MudItem xs="12">
+                        <MudTextField Value="@_turnServersDisplay"
+                                      Label="TURN Servers"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="true"
+                                      HelperText="Relay servers for restricted networks" />
+                    </MudItem>
+                }
+
+                <MudItem xs="12">
+                    <MudTextField Value="@_pluginStoragePath"
+                                  Label="Plugin Storage Path"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  HelperText="Where shared plugins are stored" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private UserP2PSettingsDto? _settings;
+    private bool _loading = true;
+    private bool _saving;
+
+    // User settings (editable)
+    private string _displayName = "";
+    private string _status = "Online";
+    private string? _statusMessage;
+    private bool _enableLanDiscovery = true;
+    private bool _enableWanDiscovery = true;
+    private bool _requireVerification;
+    private bool _autoAcceptTrusted = true;
+    private bool _enablePluginSharing = true;
+    private bool _autoDownloadFromTrusted;
+    private bool _requireSignedPlugins = true;
+
+    // Server configuration (read-only from appsettings.json)
+    private string _signalingServer = "";
+    private string _nodeMode = "";
+    private string _stunServersDisplay = "";
+    private string _turnServersDisplay = "";
+    private string _pluginStoragePath = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load server configuration from appsettings.json
+        LoadServerConfiguration();
+
+        // Load user settings from API
+        await LoadUserSettings();
+    }
+
+    private void LoadServerConfiguration()
+    {
+        var p2pSection = Configuration.GetSection("P2P");
+        _signalingServer = p2pSection["SignalingServer"] ?? "Not configured";
+        _nodeMode = p2pSection["DefaultNodeMode"] ?? "Hybrid";
+        _pluginStoragePath = p2pSection["PluginStoragePath"] ?? "./plugins/shared";
+
+        var stunServers = p2pSection.GetSection("StunServers").Get<string[]>() ?? [];
+        _stunServersDisplay = string.Join("\n", stunServers);
+
+        var turnServers = p2pSection.GetSection("TurnServers").Get<string[]>() ?? [];
+        _turnServersDisplay = string.Join("\n", turnServers);
+    }
+
+    private async Task LoadUserSettings()
+    {
+        _loading = true;
+        try
+        {
+            _settings = await P2PSettingsService.GetSettingsAsync();
+            if (_settings != null)
+            {
+                _displayName = _settings.P2PDisplayName ?? "";
+                _status = _settings.Status;
+                _statusMessage = _settings.StatusMessage;
+                _enableLanDiscovery = _settings.EnableLanDiscovery;
+                _enableWanDiscovery = _settings.EnableWanDiscovery;
+                _requireVerification = _settings.RequirePeerVerification;
+                _autoAcceptTrusted = _settings.AutoAcceptTrustedPeers;
+                _enablePluginSharing = _settings.EnablePluginSharing;
+                _autoDownloadFromTrusted = _settings.AutoDownloadFromTrusted;
+                _requireSignedPlugins = _settings.RequireSignedPlugins;
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CopyPeerId()
+    {
+        if (_settings?.PeerId != null)
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _settings.PeerId);
+            Snackbar.Add("Peer ID copied to clipboard", Severity.Success);
+        }
+    }
+
+    private void ResetToDefaults()
+    {
+        _displayName = "";
+        _status = "Online";
+        _statusMessage = null;
+        _enableLanDiscovery = true;
+        _enableWanDiscovery = true;
+        _requireVerification = false;
+        _autoAcceptTrusted = true;
+        _enablePluginSharing = true;
+        _autoDownloadFromTrusted = false;
+        _requireSignedPlugins = true;
+    }
+
+    private async Task SaveSettings()
+    {
+        _saving = true;
+        try
+        {
+            var updateRequest = new UpdateP2PSettingsDto(
+                P2PDisplayName: _displayName,
+                Status: _status,
+                StatusMessage: _statusMessage,
+                EnableLanDiscovery: _enableLanDiscovery,
+                EnableWanDiscovery: _enableWanDiscovery,
+                RequirePeerVerification: _requireVerification,
+                AutoAcceptTrustedPeers: _autoAcceptTrusted,
+                EnablePluginSharing: _enablePluginSharing,
+                AutoDownloadFromTrusted: _autoDownloadFromTrusted,
+                RequireSignedPlugins: _requireSignedPlugins
+            );
+
+            var success = await P2PSettingsService.UpdateSettingsAsync(updateRequest);
+            if (success)
+            {
+                Snackbar.Add("Settings saved successfully", Severity.Success);
+                await LoadUserSettings();
+            }
+            else
+            {
+                Snackbar.Add("Failed to save settings", Severity.Error);
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task UntrustPeer(string peerId)
+    {
+        var success = await P2PSettingsService.UntrustPeerAsync(peerId);
+        if (success)
+        {
+            Snackbar.Add("Peer removed from trusted list", Severity.Success);
+            await LoadUserSettings();
+        }
+        else
+        {
+            Snackbar.Add("Failed to remove peer from trusted list", Severity.Error);
+        }
+    }
+
+    private async Task UnblockPeer(string peerId)
+    {
+        var success = await P2PSettingsService.UnblockPeerAsync(peerId);
+        if (success)
+        {
+            Snackbar.Add("Peer unblocked", Severity.Success);
+            await LoadUserSettings();
+        }
+        else
+        {
+            Snackbar.Add("Failed to unblock peer", Severity.Error);
+        }
+    }
+}

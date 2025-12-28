@@ -53,6 +53,9 @@ builder.Services.AddScoped<ApiAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
     sp.GetRequiredService<ApiAuthenticationStateProvider>());
 
+// Add P2P settings service
+builder.Services.AddScoped<IP2PSettingsService, P2PSettingsService>();
+
 // Add authorization
 builder.Services.AddAuthorizationCore();
 builder.Services.AddCascadingAuthenticationState();
@@ -73,6 +76,8 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies(typeof(LowlandTech.Foundry.SamplePlugin._Imports).Assembly);
+    .AddAdditionalAssemblies(
+        typeof(LowlandTech.Foundry.SamplePlugin._Imports).Assembly,
+        typeof(LowlandTech.Foundry.Collaboration.UI.Components.ChatWindow).Assembly);
 
 app.Run();

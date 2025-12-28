@@ -1,0 +1,177 @@
+@page "/collaboration/document/{DocumentId:guid?}"
+@using LowlandTech.Foundry.P2P.Crdt.Types
+
+<PageTitle>@_documentTitle - Collaborative Editor</PageTitle>
+
+<div style="height: calc(100vh - 64px);">
+    <CollaborationWorkspace DocumentTitle="@_documentTitle"
+                            DocumentId="@DocumentId?.ToString()"
+                            InitialContent="@_content"
+                            IsModified="@_isModified"
+                            IsConnected="@_isConnected"
+                            CurrentUserId="@_currentUserId"
+                            LastSyncedAt="@_lastSyncedAt"
+                            ActiveCollaborators="@_collaborators"
+                            AllPeers="@_allPeers"
+                            ChatMessages="@_chatMessages"
+                            DocumentVersions="@_versions"
+                            OnContentChanged="HandleContentChanged"
+                            OnCursorMoved="HandleCursorMoved"
+                            OnSendChatMessage="HandleSendChatMessage"
+                            OnSendChatReply="HandleSendChatReply"
+                            OnPeerClick="HandlePeerClick"
+                            GetChatMessage="GetChatMessage" />
+</div>
+
+@code {
+    [Parameter]
+    public Guid? DocumentId { get; set; }
+
+    private string _documentTitle = "Untitled Document";
+    private string _content = "";
+    private bool _isModified = false;
+    private bool _isConnected = true;
+    private string _currentUserId = "local-user";
+    private DateTimeOffset? _lastSyncedAt = DateTimeOffset.UtcNow;
+
+    private List<PresenceState> _collaborators = new();
+    private List<PresenceState> _allPeers = new();
+    private List<ChatMessage> _chatMessages = new();
+    private List<DocumentVersion> _versions = new();
+    private Dictionary<Guid, ChatMessage> _messageCache = new();
+
+    protected override void OnInitialized()
+    {
+        // Initialize with demo data
+        _documentTitle = DocumentId.HasValue ? "Shared Document" : "New Document";
+
+        _content = @"# Welcome to Collaborative Editing
+
+This is a real-time collaborative document editor powered by CRDTs.
+
+## Features
+- Real-time sync across peers
+- Offline support with automatic merge
+- Cursor presence for collaborators
+- Built-in chat
+
+Start typing to collaborate!";
+
+        // Demo collaborators
+        _collaborators = new List<PresenceState>
+        {
+            new()
+            {
+                PeerId = "peer1",
+                DisplayName = "Alice",
+                Status = PresenceStatus.Online,
+                Cursor = new CursorPosition { Line = 5, Column = 10, Color = "#007bff" }
+            },
+            new()
+            {
+                PeerId = "peer2",
+                DisplayName = "Bob",
+                Status = PresenceStatus.Online,
+                Cursor = new CursorPosition { Line = 8, Column = 3, Color = "#28a745" }
+            }
+        };
+
+        _allPeers = new List<PresenceState>(_collaborators)
+        {
+            new() { PeerId = "peer3", DisplayName = "Charlie", Status = PresenceStatus.Away },
+            new() { PeerId = "peer4", DisplayName = "Diana", Status = PresenceStatus.Offline }
+        };
+
+        // Demo chat messages
+        var now = DateTimeOffset.UtcNow;
+        _chatMessages = new List<ChatMessage>
+        {
+            CreateMessage(Guid.NewGuid(), "peer1", "Alice", "Hey, I'm working on section 2!", now.AddMinutes(-10)),
+            CreateMessage(Guid.NewGuid(), "peer2", "Bob", "Great, I'll handle section 3", now.AddMinutes(-8)),
+            CreateMessage(Guid.NewGuid(), "peer1", "Alice", "Sounds good!", now.AddMinutes(-5))
+        };
+
+        foreach (var msg in _chatMessages)
+        {
+            _messageCache[msg.Id] = msg;
+        }
+
+        // Demo versions
+        _versions = new List<DocumentVersion>
+        {
+            new() { AuthorName = "Alice", Description = "Added introduction", Timestamp = now.AddHours(-2) },
+            new() { AuthorName = "Bob", Description = "Fixed typos", Timestamp = now.AddHours(-1) },
+            new() { AuthorName = "You", Description = "Current version", Timestamp = now }
+        };
+    }
+
+    private ChatMessage CreateMessage(Guid id, string senderId, string senderName, string content, DateTimeOffset timestamp)
+    {
+        return new ChatMessage
+        {
+            Id = id,
+            SenderId = senderId,
+            SenderName = senderName,
+            Content = content,
+            Timestamp = new HybridLogicalClock(timestamp.ToUnixTimeMilliseconds(), 0, senderId),
+            Type = ChatMessageType.Text
+        };
+    }
+
+    private void HandleContentChanged(string content)
+    {
+        _content = content;
+        _isModified = true;
+        _lastSyncedAt = DateTimeOffset.UtcNow;
+    }
+
+    private void HandleCursorMoved(CursorPosition position)
+    {
+        // Update local cursor position and broadcast to peers
+    }
+
+    private Task HandleSendChatMessage(string message)
+    {
+        var newMessage = CreateMessage(
+            Guid.NewGuid(),
+            _currentUserId,
+            "You",
+            message,
+            DateTimeOffset.UtcNow
+        );
+
+        _chatMessages.Add(newMessage);
+        _messageCache[newMessage.Id] = newMessage;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleSendChatReply((string Message, Guid ReplyToId) reply)
+    {
+        var newMessage = new ChatMessage
+        {
+            Id = Guid.NewGuid(),
+            SenderId = _currentUserId,
+            SenderName = "You",
+            Content = reply.Message,
+            Timestamp = new HybridLogicalClock(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), 0, _currentUserId),
+            Type = ChatMessageType.Text,
+            ReplyToId = reply.ReplyToId
+        };
+
+        _chatMessages.Add(newMessage);
+        _messageCache[newMessage.Id] = newMessage;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void HandlePeerClick(PresenceState peer)
+    {
+        // Handle peer click - could open DM, view profile, etc.
+    }
+
+    private ChatMessage? GetChatMessage(Guid messageId)
+    {
+        return _messageCache.TryGetValue(messageId, out var message) ? message : null;
+    }
+}

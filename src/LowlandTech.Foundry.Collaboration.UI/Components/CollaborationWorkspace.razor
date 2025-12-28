@@ -1,0 +1,300 @@
+@namespace LowlandTech.Foundry.Collaboration.UI.Components
+@inject IJSRuntime JS
+
+<MudGrid Spacing="0" Class="collaboration-workspace" Style="height: 100%;">
+    @* Main Editor Area *@
+    <MudItem xs="12" sm="@(ShowSidebar ? 8 : 12)" md="@(ShowSidebar ? 9 : 12)" Style="height: 100%;">
+        <MudPaper Class="d-flex flex-column" Style="height: 100%;" Elevation="0">
+            @* Document Header *@
+            <MudToolBar Dense="true">
+                <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2" />
+                <MudText Typo="Typo.subtitle1">@DocumentTitle</MudText>
+                @if (IsModified)
+                {
+                    <MudText Typo="Typo.caption" Class="ml-2 mud-text-secondary">(unsaved)</MudText>
+                }
+                <MudSpacer />
+
+                @* Collaborator Avatars *@
+                <MudAvatarGroup Max="5" Spacing="2" MaxColor="Color.Primary">
+                    @if (ActiveCollaborators != null)
+                    {
+                        @foreach (var collaborator in ActiveCollaborators)
+                        {
+                            <MudTooltip Text="@collaborator.DisplayName">
+                                <MudAvatar Size="Size.Small"
+                                           Style="@($"background-color: {collaborator.Cursor?.Color ?? "#666"}")">
+                                    @GetInitials(collaborator.DisplayName)
+                                </MudAvatar>
+                            </MudTooltip>
+                        }
+                    }
+                </MudAvatarGroup>
+
+                <MudTooltip Text="@(ShowSidebar ? "Hide sidebar" : "Show sidebar")">
+                    <MudIconButton Icon="@(ShowSidebar ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.ChevronLeft)"
+                                   OnClick="ToggleSidebar" />
+                </MudTooltip>
+            </MudToolBar>
+
+            <MudDivider />
+
+            @* Editor Content *@
+            <div class="flex-grow-1 position-relative overflow-hidden">
+                <MudTextField @bind-Value="_content"
+                              T="string"
+                              Variant="Variant.Outlined"
+                              Lines="0"
+                              AutoGrow="true"
+                              Immediate="true"
+                              DebounceInterval="100"
+                              Placeholder="Start typing..."
+                              Class="editor-field"
+                              Style="height: 100%;"
+                              OnKeyUp="HandleContentChange" />
+
+                @* Remote Cursors Overlay *@
+                @if (ActiveCollaborators != null)
+                {
+                    @foreach (var collaborator in ActiveCollaborators.Where(c => c.Cursor != null))
+                    {
+                        var cursor = collaborator.Cursor!;
+                        <div class="remote-cursor"
+                             style="@GetCursorStyle(cursor)">
+                            <div class="cursor-flag" style="background-color: @cursor.Color">
+                                @collaborator.DisplayName
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            @* Status Bar *@
+            <MudToolBar Dense="true" Class="status-bar">
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Line @_currentLine, Column @_currentColumn
+                </MudText>
+                <MudSpacer />
+                @if (LastSyncedAt.HasValue)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Synced @FormatTimeAgo(LastSyncedAt.Value)
+                    </MudText>
+                }
+                <MudText Typo="Typo.caption" Class="ml-4 mud-text-secondary">
+                    @_content?.Length characters
+                </MudText>
+            </MudToolBar>
+        </MudPaper>
+    </MudItem>
+
+    @* Sidebar *@
+    @if (ShowSidebar)
+    {
+        <MudItem xs="12" sm="4" md="3" Style="height: 100%;">
+            <MudPaper Class="d-flex flex-column" Style="height: 100%;" Elevation="1">
+                <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true" Class="flex-grow-1">
+                    @* Chat Tab *@
+                    <MudTabPanel Icon="@Icons.Material.Filled.Chat" Text="Chat">
+                        <ChatWindow RoomName="@DocumentTitle"
+                                    Messages="@ChatMessages"
+                                    ParticipantCount="@(ActiveCollaborators?.Count() ?? 0)"
+                                    CurrentUserId="@CurrentUserId"
+                                    IsConnected="@IsConnected"
+                                    OnSendMessage="@OnSendChatMessage"
+                                    OnSendReply="@OnSendChatReply"
+                                    GetMessage="@GetChatMessage" />
+                    </MudTabPanel>
+
+                    @* Peers Tab *@
+                    <MudTabPanel Icon="@Icons.Material.Filled.People" Text="Peers">
+                        <PeerStatusPanel Peers="@AllPeers"
+                                         OnPeerClick="@OnPeerClick" />
+                    </MudTabPanel>
+
+                    @* History Tab *@
+                    <MudTabPanel Icon="@Icons.Material.Filled.History" Text="History">
+                        <MudList T="DocumentVersion" Dense="true">
+                            @if (DocumentVersions != null)
+                            {
+                                @foreach (var version in DocumentVersions.OrderByDescending(v => v.Timestamp))
+                                {
+                                    <MudListItem T="DocumentVersion" @key="version.Id">
+                                        <div class="d-flex flex-column">
+                                            <MudText Typo="Typo.body2">
+                                                @version.AuthorName
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                                @version.Description - @FormatTimeAgo(version.Timestamp)
+                                            </MudText>
+                                        </div>
+                                    </MudListItem>
+                                }
+                            }
+                            else
+                            {
+                                <MudListItem T="string">
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                        No history available
+                                    </MudText>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </MudTabPanel>
+                </MudTabs>
+            </MudPaper>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter]
+    public string DocumentTitle { get; set; } = "Untitled Document";
+
+    [Parameter]
+    public string? DocumentId { get; set; }
+
+    [Parameter]
+    public string? InitialContent { get; set; }
+
+    [Parameter]
+    public bool IsModified { get; set; }
+
+    [Parameter]
+    public bool IsConnected { get; set; } = true;
+
+    [Parameter]
+    public string? CurrentUserId { get; set; }
+
+    [Parameter]
+    public DateTimeOffset? LastSyncedAt { get; set; }
+
+    [Parameter]
+    public IEnumerable<PresenceState>? ActiveCollaborators { get; set; }
+
+    [Parameter]
+    public IEnumerable<PresenceState>? AllPeers { get; set; }
+
+    [Parameter]
+    public IEnumerable<ChatMessage>? ChatMessages { get; set; }
+
+    [Parameter]
+    public IEnumerable<DocumentVersion>? DocumentVersions { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnContentChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<CursorPosition> OnCursorMoved { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSendChatMessage { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Message, Guid ReplyToId)> OnSendChatReply { get; set; }
+
+    [Parameter]
+    public EventCallback<PresenceState> OnPeerClick { get; set; }
+
+    [Parameter]
+    public Func<Guid, ChatMessage?>? GetChatMessage { get; set; }
+
+    private string? _content;
+    private int _currentLine = 1;
+    private int _currentColumn = 1;
+    private bool ShowSidebar { get; set; } = true;
+
+    protected override void OnInitialized()
+    {
+        _content = InitialContent;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (InitialContent != _content && !IsModified)
+        {
+            _content = InitialContent;
+        }
+    }
+
+    private void ToggleSidebar()
+    {
+        ShowSidebar = !ShowSidebar;
+    }
+
+    private async Task HandleContentChange(KeyboardEventArgs e)
+    {
+        await OnContentChanged.InvokeAsync(_content);
+        await UpdateCursorPosition();
+    }
+
+    private async Task UpdateCursorPosition()
+    {
+        try
+        {
+            // Get cursor position from JavaScript
+            var position = await JS.InvokeAsync<int[]>("eval", @"
+                (function() {
+                    var el = document.querySelector('.editor-field textarea');
+                    if (!el) return [1, 1];
+                    var text = el.value.substring(0, el.selectionStart);
+                    var lines = text.split('\n');
+                    return [lines.length, lines[lines.length - 1].length + 1];
+                })()
+            ");
+
+            if (position != null && position.Length == 2)
+            {
+                _currentLine = position[0];
+                _currentColumn = position[1];
+
+                await OnCursorMoved.InvokeAsync(new CursorPosition
+                {
+                    Line = _currentLine,
+                    Column = _currentColumn
+                });
+            }
+        }
+        catch
+        {
+            // Ignore JS interop errors
+        }
+    }
+
+    private static string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
+
+        return name.Length >= 2 ? name[..2].ToUpperInvariant() : name.ToUpperInvariant();
+    }
+
+    private static string GetCursorStyle(CursorPosition cursor)
+    {
+        // Position cursor based on line/column (simplified)
+        var top = (cursor.Line - 1) * 20; // Approximate line height
+        var left = cursor.Column * 8; // Approximate char width
+
+        return $"top: {top}px; left: {left}px;";
+    }
+
+    private static string FormatTimeAgo(DateTimeOffset timestamp)
+    {
+        var diff = DateTimeOffset.UtcNow - timestamp;
+
+        if (diff.TotalSeconds < 60)
+            return "just now";
+        if (diff.TotalMinutes < 60)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return timestamp.LocalDateTime.ToString("MMM d");
+    }
+}
+

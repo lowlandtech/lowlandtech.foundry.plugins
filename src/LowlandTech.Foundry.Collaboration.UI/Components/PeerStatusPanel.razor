@@ -1,0 +1,123 @@
+@namespace LowlandTech.Foundry.Collaboration.UI.Components
+
+<MudPaper Class="peer-status-panel" Elevation="1">
+    <MudToolBar Dense="true">
+        <MudText Typo="Typo.subtitle1">Online Peers</MudText>
+        <MudSpacer />
+        <MudBadge Content="@OnlinePeerCount" Color="Color.Success" Overlap="true">
+            <MudIcon Icon="@Icons.Material.Filled.People" />
+        </MudBadge>
+    </MudToolBar>
+
+    <MudDivider />
+
+    <MudList T="PresenceState" Dense="true" Class="peer-list">
+        @if (Peers != null)
+        {
+            @foreach (var peer in Peers.OrderByDescending(p => p.Status == PresenceStatus.Online))
+            {
+                <MudListItem T="PresenceState" @key="peer.PeerId" OnClick="() => OnPeerClick.InvokeAsync(peer)">
+                    <div class="d-flex align-center gap-2">
+                        <MudBadge Color="@GetStatusColor(peer.Status)"
+                                  Overlap="true"
+                                  Bordered="true"
+                                  Dot="true"
+                                  Origin="Origin.BottomRight">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                @if (!string.IsNullOrEmpty(peer.AvatarUrl))
+                                {
+                                    <MudImage Src="@peer.AvatarUrl" Alt="@peer.DisplayName" />
+                                }
+                                else
+                                {
+                                    @GetInitials(peer.DisplayName)
+                                }
+                            </MudAvatar>
+                        </MudBadge>
+
+                        <div class="d-flex flex-column">
+                            <MudText Typo="Typo.body2">@peer.DisplayName</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                @GetActivityText(peer)
+                            </MudText>
+                        </div>
+
+                        <MudSpacer />
+
+                        @if (peer.Cursor != null)
+                        {
+                            <MudTooltip Text="Currently editing">
+                                <MudIcon Icon="@Icons.Material.Filled.Edit"
+                                         Size="Size.Small"
+                                         Style="@($"color: {peer.Cursor.Color}")" />
+                            </MudTooltip>
+                        }
+                    </div>
+                </MudListItem>
+            }
+        }
+        else
+        {
+            <MudListItem T="string">
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    No peers connected
+                </MudText>
+            </MudListItem>
+        }
+    </MudList>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public IEnumerable<PresenceState>? Peers { get; set; }
+
+    [Parameter]
+    public EventCallback<PresenceState> OnPeerClick { get; set; }
+
+    private int OnlinePeerCount => Peers?.Count(p => p.Status == PresenceStatus.Online) ?? 0;
+
+    private static Color GetStatusColor(PresenceStatus status) => status switch
+    {
+        PresenceStatus.Online => Color.Success,
+        PresenceStatus.Away => Color.Warning,
+        PresenceStatus.Busy => Color.Error,
+        PresenceStatus.Invisible => Color.Default,
+        PresenceStatus.Offline => Color.Dark,
+        _ => Color.Default
+    };
+
+    private static string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
+
+        return name.Length >= 2 ? name[..2].ToUpperInvariant() : name.ToUpperInvariant();
+    }
+
+    private static string GetActivityText(PresenceState peer)
+    {
+        if (!string.IsNullOrEmpty(peer.StatusMessage))
+            return peer.StatusMessage;
+
+        return peer.Activity.Type switch
+        {
+            ActivityType.Editing => $"Editing {peer.Activity.Description ?? "a document"}",
+            ActivityType.Viewing => $"Viewing {peer.Activity.Description ?? "a document"}",
+            ActivityType.Chatting => "In a conversation",
+            ActivityType.Typing => "Typing...",
+            ActivityType.InCall => "In a call",
+            _ => peer.Status switch
+            {
+                PresenceStatus.Online => "Online",
+                PresenceStatus.Away => "Away",
+                PresenceStatus.Busy => "Do not disturb",
+                PresenceStatus.Invisible => "Invisible",
+                PresenceStatus.Offline => "Offline",
+                _ => ""
+            }
+        };
+    }
+}

@@ -5,6 +5,10 @@
     <ProjectReference Include="..\LowlandTech.Foundry.SamplePlugin\LowlandTech.Foundry.SamplePlugin.csproj" />
     <ProjectReference Include="..\LowlandTech.Foundry.PremiumTheme\LowlandTech.Foundry.PremiumTheme.csproj" />
     <ProjectReference Include="..\LowlandTech.Foundry.ServiceDefaults\LowlandTech.Foundry.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\LowlandTech.Foundry.Collaboration.UI\LowlandTech.Foundry.Collaboration.UI.csproj" />
+    <ProjectReference Include="..\LowlandTech.Foundry.P2P.Core\LowlandTech.Foundry.P2P.Core.csproj" />
+    <ProjectReference Include="..\LowlandTech.Foundry.P2P.Crdt\LowlandTech.Foundry.P2P.Crdt.csproj" />
+    <ProjectReference Include="..\LowlandTech.Foundry.Collaboration\LowlandTech.Foundry.Collaboration.csproj" />
   </ItemGroup>
 
   <ItemGroup>

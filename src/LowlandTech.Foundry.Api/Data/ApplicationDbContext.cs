@@ -10,6 +10,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
     }
 
+    public DbSet<UserP2PSettings> UserP2PSettings => Set<UserP2PSettings>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -25,6 +27,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.State).HasMaxLength(100);
             entity.Property(e => e.PostalCode).HasMaxLength(20);
             entity.Property(e => e.Country).HasMaxLength(100);
+        });
+
+        builder.Entity<UserP2PSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.Property(e => e.PeerId).HasMaxLength(128);
+            entity.Property(e => e.P2PDisplayName).HasMaxLength(100);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.StatusMessage).HasMaxLength(500);
+
+            entity.HasOne(e => e.User)
+                .WithOne()
+                .HasForeignKey<UserP2PSettings>(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
