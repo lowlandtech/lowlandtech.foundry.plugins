@@ -1,0 +1,80 @@
+@inherits LayoutComponentBase
+@inject IPluginMenuProvider MenuProvider
+
+<MudThemeProvider @bind-IsDarkMode="@_isDarkMode" Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Dense="true">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       OnClick="@ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-3">Foundry</MudText>
+        <MudSpacer />
+
+        <TopbarNav />
+
+        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit"
+                       OnClick="@ToggleDarkMode" />
+
+        <UserMenu />
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="@_drawerOpen"
+               Elevation="2"
+               ClipMode="DrawerClipMode.Always"
+               Variant="@DrawerVariant.Mini"
+               OpenMiniOnHover="true">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.h6">Navigation</MudText>
+        </MudDrawerHeader>
+        <SidebarNav />
+    </MudDrawer>
+
+    <MudMainContent Class="pt-16 px-4">
+        <MudContainer MaxWidth="MaxWidth.False" Class="py-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">X</span>
+</div>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode = false;
+
+    private MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = Colors.Blue.Darken1,
+            Secondary = Colors.DeepPurple.Accent2,
+            AppbarBackground = Colors.Blue.Darken2
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = Colors.Blue.Lighten1,
+            Secondary = Colors.DeepPurple.Accent2,
+            AppbarBackground = Colors.Blue.Darken4
+        }
+    };
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private void ToggleDarkMode()
+    {
+        _isDarkMode = !_isDarkMode;
+    }
+}

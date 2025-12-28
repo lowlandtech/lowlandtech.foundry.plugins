@@ -1,0 +1,39 @@
+@page "/fullscreen"
+
+@using LowlandTech.Foundry.SamplePlugin.Layouts
+
+@attribute [MenuItem(Title = "Full Screen", Icon = Icons.Material.Filled.Fullscreen, Location = MenuLocation.Sidebar, Order = 30)]
+@attribute [PageLayout(typeof(FullScreenLayout))]
+
+<PageTitle>Full Screen Page</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+    <MudPaper Class="pa-8" Elevation="4">
+        <MudStack AlignItems="AlignItems.Center" Spacing="4">
+            <MudIcon Icon="@Icons.Material.Filled.Fullscreen" Size="Size.Large" Color="Color.Primary" />
+            <MudText Typo="Typo.h4" Align="Align.Center">Full Screen Page</MudText>
+            <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-4">
+                This page uses a custom <code>[PageLayout]</code> attribute to render without the main sidebar and navigation.
+            </MudText>
+
+            <MudAlert Severity="Severity.Info" Class="mb-4">
+                The <code>FullScreenLayout</code> is defined in the plugin and automatically applied when this page is rendered.
+            </MudAlert>
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.h6">How it works:</MudText>
+            <MudList T="string" Dense="true">
+                <MudListItem Icon="@Icons.Material.Filled.Code">
+                    Add <code>[PageLayout(typeof(YourLayout))]</code> attribute to your page
+                </MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.SwapHoriz">
+                    The <code>DynamicRouteView</code> detects the attribute and switches layouts
+                </MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.Dashboard">
+                    Your custom layout wraps the page content
+                </MudListItem>
+            </MudList>
+        </MudStack>
+    </MudPaper>
+</MudContainer>

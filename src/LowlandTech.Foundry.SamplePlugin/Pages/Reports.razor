@@ -1,0 +1,49 @@
+@page "/reports"
+
+@attribute [MenuItem(Title = "Reports", Icon = Icons.Material.Filled.Assessment, Location = MenuLocation.Sidebar, Order = 20)]
+
+<PageTitle>Reports</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Reports Overview</MudText>
+<MudText Typo="Typo.body1" Class="mb-6">
+    Select a report type from the sidebar submenu or choose below.
+</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Sales Reports</MudText>
+                </CardHeaderContent>
+                <CardHeaderAvatar>
+                    <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Success" Size="Size.Large" />
+                </CardHeaderAvatar>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText>View detailed sales analytics and revenue trends.</MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/reports/sales">View Report</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Inventory Reports</MudText>
+                </CardHeaderContent>
+                <CardHeaderAvatar>
+                    <MudIcon Icon="@Icons.Material.Filled.Inventory" Color="Color.Info" Size="Size.Large" />
+                </CardHeaderAvatar>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText>Track inventory levels and stock movements.</MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/reports/inventory">View Report</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+</MudGrid>

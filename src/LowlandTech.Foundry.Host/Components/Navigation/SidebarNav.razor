@@ -1,0 +1,8 @@
+@inject IPluginMenuProvider MenuProvider
+
+<MudNavMenu>
+    @foreach (var item in MenuProvider.GetSidebarMenuItems())
+    {
+        <NavMenuItem Item="@item" />
+    }
+</MudNavMenu>

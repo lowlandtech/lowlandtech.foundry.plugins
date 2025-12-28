@@ -1,0 +1,14 @@
+<Router AppAssembly="typeof(Program).Assembly"
+        AdditionalAssemblies="_additionalAssemblies">
+    <Found Context="routeData">
+        <DynamicRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>
+
+@code {
+    private static readonly System.Reflection.Assembly[] _additionalAssemblies = new[]
+    {
+        typeof(LowlandTech.Foundry.SamplePlugin._Imports).Assembly
+    };
+}

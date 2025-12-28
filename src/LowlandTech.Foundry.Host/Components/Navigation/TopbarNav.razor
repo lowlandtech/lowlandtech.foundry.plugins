@@ -1,0 +1,52 @@
+@inject IPluginMenuProvider MenuProvider
+@inject NavigationManager NavigationManager
+
+<MudStack Row="true" Spacing="1" Class="mr-4">
+    @foreach (var item in MenuProvider.GetTopbarMenuItems())
+    {
+        @if (item.Children.Count > 0)
+        {
+            <MudMenu Label="@item.Title"
+                     StartIcon="@GetIcon(item.Icon)"
+                     Color="Color.Inherit"
+                     Dense="true"
+                     AnchorOrigin="Origin.BottomCenter"
+                     TransformOrigin="Origin.TopCenter">
+                @foreach (var child in item.Children)
+                {
+                    <MudMenuItem OnClick="@(() => Navigate(child.Route))"
+                                 Icon="@GetIcon(child.Icon)">
+                        @child.Title
+                    </MudMenuItem>
+                }
+            </MudMenu>
+        }
+        else
+        {
+            <MudButton Color="Color.Inherit"
+                       StartIcon="@GetIcon(item.Icon)"
+                       OnClick="@(() => Navigate(item.Route))">
+                @item.Title
+            </MudButton>
+        }
+    }
+</MudStack>
+
+@code {
+    private void Navigate(string route)
+    {
+        if (route != "#")
+        {
+            NavigationManager.NavigateTo(route);
+        }
+    }
+
+    private string? GetIcon(string iconName)
+    {
+        if (string.IsNullOrEmpty(iconName))
+            return null;
+
+        // Support both direct icon strings and MudBlazor icon names
+        return iconName;
+    }
+}

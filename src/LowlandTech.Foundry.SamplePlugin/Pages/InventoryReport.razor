@@ -1,0 +1,46 @@
+@page "/reports/inventory"
+
+@attribute [MenuItem(Title = "Inventory Report", Icon = Icons.Material.Filled.Inventory, Location = MenuLocation.Sidebar, Order = 22, ParentMenu = "Reports")]
+
+<PageTitle>Inventory Report</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Inventory Report</MudText>
+<MudText Typo="Typo.body1" Class="mb-6">Track inventory levels and stock movements.</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="2">
+    <MudText Typo="Typo.h6" GutterBottom="true">Current Stock Levels</MudText>
+    <MudSimpleTable Hover="true" Dense="true">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>In Stock</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Widget A</td>
+                <td>WGT-001</td>
+                <td>523</td>
+                <td><MudChip T="string" Color="Color.Success" Size="Size.Small">In Stock</MudChip></td>
+            </tr>
+            <tr>
+                <td>Widget B</td>
+                <td>WGT-002</td>
+                <td>45</td>
+                <td><MudChip T="string" Color="Color.Warning" Size="Size.Small">Low Stock</MudChip></td>
+            </tr>
+            <tr>
+                <td>Widget C</td>
+                <td>WGT-003</td>
+                <td>0</td>
+                <td><MudChip T="string" Color="Color.Error" Size="Size.Small">Out of Stock</MudChip></td>
+            </tr>
+        </tbody>
+    </MudSimpleTable>
+</MudPaper>
+
+<MudAlert Severity="Severity.Warning" Class="mb-4">
+    2 items require attention: 1 low stock, 1 out of stock.
+</MudAlert>

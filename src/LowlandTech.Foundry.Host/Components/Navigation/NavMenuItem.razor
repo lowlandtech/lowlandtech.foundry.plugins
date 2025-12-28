@@ -1,0 +1,37 @@
+@inject NavigationManager NavigationManager
+
+@if (Item.Children.Count > 0)
+{
+    <MudNavGroup Title="@Item.Title"
+                 Icon="@GetIcon(Item.Icon)"
+                 Expanded="@_expanded"
+                 ExpandedChanged="@((bool e) => _expanded = e)">
+        @foreach (var child in Item.Children)
+        {
+            <NavMenuItem Item="@child" />
+        }
+    </MudNavGroup>
+}
+else
+{
+    <MudNavLink Href="@Item.Route"
+                Icon="@GetIcon(Item.Icon)"
+                Match="NavLinkMatch.Prefix">
+        @Item.Title
+    </MudNavLink>
+}
+
+@code {
+    [Parameter]
+    public required MenuItemInfo Item { get; set; }
+
+    private bool _expanded = false;
+
+    private string? GetIcon(string iconName)
+    {
+        if (string.IsNullOrEmpty(iconName))
+            return null;
+
+        return iconName;
+    }
+}

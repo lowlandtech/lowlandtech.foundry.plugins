@@ -1,0 +1,45 @@
+@page "/settings"
+
+@attribute [MenuItem(Title = "Settings", Icon = Icons.Material.Filled.Settings, Location = MenuLocation.Topbar, Order = 100)]
+
+<PageTitle>Settings</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Settings</MudText>
+<MudText Typo="Typo.body1" Class="mb-6">
+    This page is accessible from the topbar navigation.
+</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="2">
+    <MudText Typo="Typo.h6" GutterBottom="true">General Settings</MudText>
+    <MudStack Spacing="4">
+        <MudSwitch T="bool" Label="Enable notifications" Color="Color.Primary" @bind-Value="_enableNotifications" />
+        <MudSwitch T="bool" Label="Auto-save changes" Color="Color.Primary" @bind-Value="_autoSave" />
+        <MudSwitch T="bool" Label="Show tooltips" Color="Color.Primary" @bind-Value="_showTooltips" />
+    </MudStack>
+</MudPaper>
+
+<MudPaper Class="pa-4 mb-4" Elevation="2">
+    <MudText Typo="Typo.h6" GutterBottom="true">Display Preferences</MudText>
+    <MudStack Spacing="4">
+        <MudSelect T="string" Label="Language" Value="@_language" ValueChanged="@((string v) => _language = v)">
+            <MudSelectItem Value="@("en")">English</MudSelectItem>
+            <MudSelectItem Value="@("es")">Spanish</MudSelectItem>
+            <MudSelectItem Value="@("fr")">French</MudSelectItem>
+        </MudSelect>
+        <MudSelect T="string" Label="Date Format" Value="@_dateFormat" ValueChanged="@((string v) => _dateFormat = v)">
+            <MudSelectItem Value="@("MM/dd/yyyy")">MM/DD/YYYY</MudSelectItem>
+            <MudSelectItem Value="@("dd/MM/yyyy")">DD/MM/YYYY</MudSelectItem>
+            <MudSelectItem Value="@("yyyy-MM-dd")">YYYY-MM-DD</MudSelectItem>
+        </MudSelect>
+    </MudStack>
+</MudPaper>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary">Save Changes</MudButton>
+
+@code {
+    private bool _enableNotifications;
+    private bool _autoSave = true;
+    private bool _showTooltips = true;
+    private string _language = "en";
+    private string _dateFormat = "MM/dd/yyyy";
+}

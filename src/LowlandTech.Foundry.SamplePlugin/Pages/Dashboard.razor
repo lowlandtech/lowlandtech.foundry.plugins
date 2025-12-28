@@ -1,0 +1,77 @@
+@page "/dashboard"
+
+@attribute [MenuItem(Title = "Dashboard", Icon = Icons.Material.Filled.Dashboard, Location = MenuLocation.Sidebar, Order = 10)]
+
+<PageTitle>Dashboard</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Dashboard</MudText>
+<MudText Typo="Typo.body1" Class="mb-6">This is a sample dashboard page from the SamplePlugin.</MudText>
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack>
+                <MudText Typo="Typo.subtitle2" Color="Color.Primary">Total Users</MudText>
+                <MudText Typo="Typo.h4">1,234</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Success">+12% from last month</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack>
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Revenue</MudText>
+                <MudText Typo="Typo.h4">$45,678</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Success">+8% from last month</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack>
+                <MudText Typo="Typo.subtitle2" Color="Color.Info">Active Projects</MudText>
+                <MudText Typo="Typo.h4">42</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Warning">-2 from last month</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack>
+                <MudText Typo="Typo.subtitle2" Color="Color.Tertiary">Pending Tasks</MudText>
+                <MudText Typo="Typo.h4">17</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Error">5 overdue</MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudPaper Class="pa-4 mt-6" Elevation="2">
+    <MudText Typo="Typo.h6" GutterBottom="true">Recent Activity</MudText>
+    <MudSimpleTable Hover="true" Striped="true">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Action</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>John Doe</td>
+                <td>Created new project</td>
+                <td>Today, 10:30 AM</td>
+            </tr>
+            <tr>
+                <td>Jane Smith</td>
+                <td>Updated user profile</td>
+                <td>Today, 9:15 AM</td>
+            </tr>
+            <tr>
+                <td>Bob Wilson</td>
+                <td>Completed task #42</td>
+                <td>Yesterday, 4:45 PM</td>
+            </tr>
+        </tbody>
+    </MudSimpleTable>
+</MudPaper>

@@ -1,0 +1,36 @@
+@using System.Reflection
+@using LowlandTech.Foundry.PluginCore.Attributes
+
+@if (_layoutType != null)
+{
+    <LayoutView Layout="@_layoutType">
+        <RouteView RouteData="@RouteData" />
+    </LayoutView>
+}
+else
+{
+    <RouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout" />
+}
+
+@code {
+    [Parameter]
+    public required RouteData RouteData { get; set; }
+
+    [Parameter]
+    public Type? DefaultLayout { get; set; }
+
+    private Type? _layoutType;
+
+    protected override void OnParametersSet()
+    {
+        _layoutType = GetPageLayoutType();
+    }
+
+    private Type? GetPageLayoutType()
+    {
+        var pageType = RouteData.PageType;
+        var pageLayoutAttr = pageType.GetCustomAttribute<PageLayoutAttribute>();
+
+        return pageLayoutAttr?.LayoutType;
+    }
+}

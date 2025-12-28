@@ -1,0 +1,46 @@
+@page "/reports/sales"
+
+@attribute [MenuItem(Title = "Sales Report", Icon = Icons.Material.Filled.TrendingUp, Location = MenuLocation.Sidebar, Order = 21, ParentMenu = "Reports")]
+
+<PageTitle>Sales Report</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Sales Report</MudText>
+<MudText Typo="Typo.body1" Class="mb-6">Detailed sales analytics and revenue trends.</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="2">
+    <MudText Typo="Typo.h6" GutterBottom="true">Monthly Sales</MudText>
+    <MudSimpleTable Hover="true" Dense="true">
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th>Units Sold</th>
+                <th>Revenue</th>
+                <th>Growth</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>January</td>
+                <td>1,234</td>
+                <td>$45,678</td>
+                <td><MudChip T="string" Color="Color.Success" Size="Size.Small">+12%</MudChip></td>
+            </tr>
+            <tr>
+                <td>February</td>
+                <td>1,456</td>
+                <td>$52,340</td>
+                <td><MudChip T="string" Color="Color.Success" Size="Size.Small">+15%</MudChip></td>
+            </tr>
+            <tr>
+                <td>March</td>
+                <td>1,123</td>
+                <td>$41,200</td>
+                <td><MudChip T="string" Color="Color.Error" Size="Size.Small">-8%</MudChip></td>
+            </tr>
+        </tbody>
+    </MudSimpleTable>
+</MudPaper>
+
+<MudAlert Severity="Severity.Info">
+    This is a sample report from the SamplePlugin demonstrating submenu navigation.
+</MudAlert>

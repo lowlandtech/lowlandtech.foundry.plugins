@@ -1,0 +1,37 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="fullscreen-layout">
+    <MudAppBar Elevation="0" Dense="true" Color="Color.Transparent">
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   Href="/"
+                   Color="Color.Inherit">
+            Back to Main
+        </MudButton>
+        <MudSpacer />
+        <MudText Typo="Typo.h6">Full Screen Mode</MudText>
+        <MudSpacer />
+    </MudAppBar>
+
+    <div class="fullscreen-content">
+        @Body
+    </div>
+</div>
+
+<style>
+    .fullscreen-layout {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .fullscreen-content {
+        flex: 1;
+        padding: 1rem;
+    }
+</style>
