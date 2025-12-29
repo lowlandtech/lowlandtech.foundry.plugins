@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LowlandTech.Foundry.PluginCore\LowlandTech.Foundry.PluginCore.csproj" />
+    <ProjectReference Include="..\LowlandTech.Foundry.P2P\LowlandTech.Foundry.P2P.csproj" />
+    <ProjectReference Include="..\LowlandTech.Foundry.Collaboration\LowlandTech.Foundry.Collaboration.csproj" />
+    <ProjectReference Include="..\..\backend\LowlandTech.Foundry.ServiceDefaults\LowlandTech.Foundry.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\examples\LowlandTech.Foundry.SamplePlugin\LowlandTech.Foundry.SamplePlugin.csproj" />
+    <ProjectReference Include="..\..\examples\LowlandTech.Foundry.PremiumTheme\LowlandTech.Foundry.PremiumTheme.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MudBlazor" Version="8.15.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

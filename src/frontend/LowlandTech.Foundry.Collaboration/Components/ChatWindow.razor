@@ -1,0 +1,247 @@
+@namespace LowlandTech.Foundry.Collaboration.Components
+@inject IJSRuntime JS
+
+<MudPaper Class="chat-window d-flex flex-column" Style="height: 100%;" Elevation="1">
+    @* Header *@
+    <MudToolBar Dense="true">
+        <MudIcon Icon="@Icons.Material.Filled.Chat" Class="mr-2" />
+        <MudText Typo="Typo.subtitle1">@RoomName</MudText>
+        <MudSpacer />
+        @if (ParticipantCount > 0)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                @ParticipantCount participants
+            </MudChip>
+        }
+    </MudToolBar>
+
+    <MudDivider />
+
+    @* Messages *@
+    <div class="flex-grow-1 overflow-auto pa-2" @ref="_messageContainer" style="min-height: 200px;">
+        @if (Messages != null)
+        {
+            var previousDate = DateTime.MinValue;
+            @foreach (var message in Messages)
+            {
+                var messageDate = message.Timestamp.LocalDateTime.Date;
+                if (messageDate != previousDate)
+                {
+                    previousDate = messageDate;
+                    <div class="d-flex justify-center my-2">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                            @FormatDate(messageDate)
+                        </MudChip>
+                    </div>
+                }
+
+                <div class="@GetMessageClass(message)" @key="message.Id">
+                    @if (message.Type == ChatMessageType.System)
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary text-center">
+                            @message.Content
+                        </MudText>
+                    }
+                    else
+                    {
+                        <div class="message-bubble @(IsOwnMessage(message) ? "own-message" : "")">
+                            @if (!IsOwnMessage(message))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Primary">
+                                    @message.SenderName
+                                </MudText>
+                            }
+
+                            @if (message.ReplyToId.HasValue)
+                            {
+                                <div class="reply-indicator">
+                                    <MudIcon Icon="@Icons.Material.Filled.Reply" Size="Size.Small" />
+                                    <MudText Typo="Typo.caption">
+                                        @GetReplyPreview(message.ReplyToId.Value)
+                                    </MudText>
+                                </div>
+                            }
+
+                            <MudText Typo="Typo.body2">@message.Content</MudText>
+
+                            <div class="d-flex align-center gap-1 mt-1">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    @message.Timestamp.LocalDateTime.ToString("HH:mm")
+                                </MudText>
+                                @if (message.EditedAt != null)
+                                {
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                        (edited)
+                                    </MudText>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <div class="d-flex justify-center align-center" style="height: 100%;">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    No messages yet. Start the conversation!
+                </MudText>
+            </div>
+        }
+    </div>
+
+    <MudDivider />
+
+    @* Input *@
+    <div class="pa-2">
+        @if (_replyingTo != null)
+        {
+            <div class="d-flex align-center gap-2 mb-2 pa-2 rounded" style="background-color: var(--mud-palette-background-gray);">
+                <MudIcon Icon="@Icons.Material.Filled.Reply" Size="Size.Small" />
+                <div class="flex-grow-1">
+                    <MudText Typo="Typo.caption" Color="Color.Primary">
+                        Replying to @_replyingTo.SenderName
+                    </MudText>
+                    <MudText Typo="Typo.caption" Class="text-truncate">
+                        @_replyingTo.Content
+                    </MudText>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                               Size="Size.Small"
+                               OnClick="CancelReply" />
+            </div>
+        }
+
+        <div class="d-flex gap-2">
+            <MudTextField @bind-Value="_messageText"
+                          Placeholder="Type a message..."
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          FullWidth="true"
+                          Immediate="true"
+                          OnKeyDown="HandleKeyDown"
+                          Disabled="@(!IsConnected)" />
+            <MudIconButton Icon="@Icons.Material.Filled.Send"
+                           Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           OnClick="SendMessage"
+                           Disabled="@(string.IsNullOrWhiteSpace(_messageText) || !IsConnected)" />
+        </div>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public string RoomName { get; set; } = "Chat";
+
+    [Parameter]
+    public IEnumerable<ChatMessage>? Messages { get; set; }
+
+    [Parameter]
+    public int ParticipantCount { get; set; }
+
+    [Parameter]
+    public string? CurrentUserId { get; set; }
+
+    [Parameter]
+    public bool IsConnected { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<string> OnSendMessage { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Message, Guid ReplyToId)> OnSendReply { get; set; }
+
+    [Parameter]
+    public Func<Guid, ChatMessage?>? GetMessage { get; set; }
+
+    private ElementReference _messageContainer;
+    private string _messageText = "";
+    private ChatMessage? _replyingTo;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender || Messages?.Any() == true)
+        {
+            await ScrollToBottom();
+        }
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", "arguments[0].scrollTop = arguments[0].scrollHeight", _messageContainer);
+        }
+        catch
+        {
+            // Ignore JS interop errors
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_messageText)) return;
+
+        if (_replyingTo != null)
+        {
+            await OnSendReply.InvokeAsync((_messageText, _replyingTo.Id));
+            _replyingTo = null;
+        }
+        else
+        {
+            await OnSendMessage.InvokeAsync(_messageText);
+        }
+
+        _messageText = "";
+        await ScrollToBottom();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    public void ReplyTo(ChatMessage message)
+    {
+        _replyingTo = message;
+        StateHasChanged();
+    }
+
+    private void CancelReply()
+    {
+        _replyingTo = null;
+    }
+
+    private bool IsOwnMessage(ChatMessage message) =>
+        message.SenderId == CurrentUserId;
+
+    private string GetMessageClass(ChatMessage message) =>
+        message.Type == ChatMessageType.System
+            ? "my-1"
+            : $"d-flex {(IsOwnMessage(message) ? "justify-end" : "justify-start")} my-1";
+
+    private string GetReplyPreview(Guid replyToId)
+    {
+        var original = GetMessage?.Invoke(replyToId);
+        if (original == null) return "Original message";
+
+        var preview = original.Content.Length > 50
+            ? original.Content[..50] + "..."
+            : original.Content;
+
+        return $"{original.SenderName}: {preview}";
+    }
+
+    private static string FormatDate(DateTime date)
+    {
+        if (date.Date == DateTime.Today)
+            return "Today";
+        if (date.Date == DateTime.Today.AddDays(-1))
+            return "Yesterday";
+        return date.ToString("MMMM d, yyyy");
+    }
+}
