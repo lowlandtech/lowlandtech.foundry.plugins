@@ -16,6 +16,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<FeatureStateEntity> FeatureStates => Set<FeatureStateEntity>();
 
+    public DbSet<PluginHostingSettings> PluginHostingSettings => Set<PluginHostingSettings>();
+
+    public DbSet<InstalledPluginPackage> InstalledPluginPackages => Set<InstalledPluginPackage>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -57,6 +61,39 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<FeatureStateEntity>(entity =>
         {
             entity.HasIndex(e => e.PluginId);
+        });
+
+        builder.Entity<PluginHostingSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // Seed default settings
+            entity.HasData(new PluginHostingSettings
+            {
+                Id = 1,
+                DefaultHostingMode = PluginHostingMode.Container,
+                PluginRouteBase = "/api/plugins",
+                DockerNetwork = "foundry-plugins",
+                AutoApplyMigrations = true,
+                AutoActivateOnInstall = true,
+                MaxConcurrentContainers = 50,
+                DefaultContainerMemoryMb = 256,
+                DefaultContainerCpuLimit = "0.5",
+                HealthCheckIntervalSeconds = 30,
+                ContainerStartupTimeoutSeconds = 60,
+                PluginFeedUrls = "",
+                MultitenancyEnabled = true,
+                TenantHeader = "X-Tenant-Id",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        });
+
+        builder.Entity<InstalledPluginPackage>(entity =>
+        {
+            entity.HasKey(e => e.PluginId);
+            entity.HasIndex(e => e.PackageId);
+            entity.HasIndex(e => e.RuntimeStatus);
+            entity.Property(e => e.OpenApiManifest).HasColumnType("jsonb");
         });
     }
 }
