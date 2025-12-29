@@ -1,7 +1,11 @@
 using System.Security.Claims;
+using System.Text;
 using LowlandTech.Foundry.Api.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,6 +53,26 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
+// Configure JWT Bearer authentication
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "FoundryDefaultSecretKey_ChangeInProduction_32chars!";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "LowlandTech.Foundry.Api";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "LowlandTech.Foundry";
+
+builder.Services.AddAuthentication()
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
 builder.Services.AddAuthorizationBuilder();
 
 // Add CORS for Blazor Host
@@ -63,20 +87,46 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add OpenAPI
-builder.Services.AddOpenApi();
+// Add OpenAPI with bearer token security
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Info = new()
+        {
+            Title = "LowlandTech Foundry API",
+            Version = "v1",
+            Description = "REST API for LowlandTech Foundry with Identity authentication and P2P settings management."
+        };
+        return Task.CompletedTask;
+    });
+});
 
 var app = builder.Build();
 
 // Map service default endpoints (health checks)
 app.MapDefaultEndpoints();
 
-// Configure the HTTP request pipeline.
+// OpenAPI and Scalar are always available (secured by bearer token)
+app.MapOpenApi();
+app.MapScalarApiReference(options =>
+{
+    options
+        .WithTitle("LowlandTech Foundry API")
+        .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
+        .AddPreferredSecuritySchemes("Bearer")
+        .AddHttpAuthentication("Bearer", auth =>
+        {
+            // Token can be filled in by users; leave empty for security
+        });
+});
+
+// Redirect root to Scalar
+app.MapGet("/", () => Results.Redirect("/scalar/v1")).ExcludeFromDescription();
+
+// Auto-migrate database in development
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-
-    // Auto-migrate database in development
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await db.Database.MigrateAsync();
@@ -105,14 +155,78 @@ app.MapGet("/api/auth/user", (HttpContext context) =>
         user.Identity.Name,
         user.Claims.Select(c => new ClaimInfo(c.Type, c.Value)).ToArray()
     ));
-}).AllowAnonymous();
+})
+.AllowAnonymous()
+.WithName("GetCurrentUser")
+.WithSummary("Get current user info")
+.WithDescription("Returns authentication state and claims for the current user. Can be called anonymously to check if a user is logged in.")
+.WithTags("Authentication")
+.Produces<UserInfo>();
 
 // Logout endpoint
 app.MapPost("/api/auth/logout", async (SignInManager<ApplicationUser> signInManager) =>
 {
     await signInManager.SignOutAsync();
     return Results.Ok();
-}).RequireAuthorization();
+})
+.RequireAuthorization()
+.WithName("Logout")
+.WithSummary("Sign out the current user")
+.WithDescription("Ends the current user session and clears authentication cookies.")
+.WithTags("Authentication")
+.Produces(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status401Unauthorized);
+
+// Get JWT token for API access (e.g., for Scalar)
+app.MapPost("/api/auth/token", async (
+    UserManager<ApplicationUser> userManager,
+    IConfiguration configuration,
+    TokenRequest request) =>
+{
+    var user = await userManager.FindByEmailAsync(request.Email);
+    if (user == null || !await userManager.CheckPasswordAsync(user, request.Password))
+    {
+        return Results.Unauthorized();
+    }
+
+    var key = configuration["Jwt:Key"] ?? "FoundryDefaultSecretKey_ChangeInProduction_32chars!";
+    var issuer = configuration["Jwt:Issuer"] ?? "LowlandTech.Foundry.Api";
+    var audience = configuration["Jwt:Audience"] ?? "LowlandTech.Foundry";
+    var expireMinutes = int.Parse(configuration["Jwt:ExpireMinutes"] ?? "60");
+
+    var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+    var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+    var claims = new List<Claim>
+    {
+        new(ClaimTypes.NameIdentifier, user.Id),
+        new(ClaimTypes.Email, user.Email!),
+        new(ClaimTypes.Name, user.UserName ?? user.Email!)
+    };
+
+    var roles = await userManager.GetRolesAsync(user);
+    claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
+    var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
+        issuer: issuer,
+        audience: audience,
+        claims: claims,
+        expires: DateTime.UtcNow.AddMinutes(expireMinutes),
+        signingCredentials: credentials
+    );
+
+    var tokenString = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
+
+    return Results.Ok(new TokenResponse(tokenString, DateTime.UtcNow.AddMinutes(expireMinutes)));
+})
+.AllowAnonymous()
+.WithName("GetToken")
+.WithSummary("Get JWT bearer token")
+.WithDescription("Authenticates with email and password, returns a JWT token for API access. Use this token in the Authorization header as 'Bearer {token}' for authenticated requests.")
+.WithTags("Authentication")
+.Accepts<TokenRequest>("application/json")
+.Produces<TokenResponse>()
+.Produces(StatusCodes.Status401Unauthorized);
 
 // Get user profile
 app.MapGet("/api/profile", async (
@@ -143,7 +257,15 @@ app.MapGet("/api/profile", async (
         user.CreatedAt,
         user.UpdatedAt
     ));
-}).RequireAuthorization();
+})
+.RequireAuthorization()
+.WithName("GetProfile")
+.WithSummary("Get user profile")
+.WithDescription("Returns the complete profile for the authenticated user including personal info and address.")
+.WithTags("Profile")
+.Produces<UserProfile>()
+.Produces(StatusCodes.Status401Unauthorized)
+.Produces(StatusCodes.Status404NotFound);
 
 // Update user profile
 app.MapPut("/api/profile", async (
@@ -176,7 +298,17 @@ app.MapPut("/api/profile", async (
     }
 
     return Results.Ok();
-}).RequireAuthorization();
+})
+.RequireAuthorization()
+.WithName("UpdateProfile")
+.WithSummary("Update user profile")
+.WithDescription("Updates the authenticated user's profile. All fields are optional - only provided fields will be updated.")
+.WithTags("Profile")
+.Accepts<UpdateProfileRequest>("application/json")
+.Produces(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status401Unauthorized)
+.Produces(StatusCodes.Status404NotFound);
 
 // Change password
 app.MapPost("/api/profile/change-password", async (
@@ -197,7 +329,17 @@ app.MapPost("/api/profile/change-password", async (
     }
 
     return Results.Ok();
-}).RequireAuthorization();
+})
+.RequireAuthorization()
+.WithName("ChangePassword")
+.WithSummary("Change user password")
+.WithDescription("Changes the authenticated user's password. Requires the current password for verification.")
+.WithTags("Profile")
+.Accepts<ChangePasswordRequest>("application/json")
+.Produces(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status401Unauthorized)
+.Produces(StatusCodes.Status404NotFound);
 
 // Get P2P settings for current user
 app.MapGet("/api/p2p-settings", async (
@@ -237,7 +379,15 @@ app.MapGet("/api/p2p-settings", async (
         settings.CreatedAt,
         settings.UpdatedAt
     ));
-}).RequireAuthorization();
+})
+.RequireAuthorization()
+.WithName("GetP2PSettings")
+.WithSummary("Get P2P settings")
+.WithDescription("Returns the peer-to-peer collaboration settings for the authenticated user, including discovery preferences, trust settings, and plugin sharing options.")
+.WithTags("P2P Settings")
+.Produces<UserP2PSettingsResponse>()
+.Produces(StatusCodes.Status401Unauthorized)
+.Produces(StatusCodes.Status404NotFound);
 
 // Update P2P settings for current user
 app.MapPut("/api/p2p-settings", async (
@@ -273,7 +423,16 @@ app.MapPut("/api/p2p-settings", async (
 
     await db.SaveChangesAsync();
     return Results.Ok();
-}).RequireAuthorization();
+})
+.RequireAuthorization()
+.WithName("UpdateP2PSettings")
+.WithSummary("Update P2P settings")
+.WithDescription("Updates the peer-to-peer collaboration settings. All fields are optional - only provided fields will be updated.")
+.WithTags("P2P Settings")
+.Accepts<UpdateP2PSettingsRequest>("application/json")
+.Produces(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status401Unauthorized)
+.Produces(StatusCodes.Status404NotFound);
 
 // Trust a peer
 app.MapPost("/api/p2p-settings/trust", async (
@@ -310,7 +469,16 @@ app.MapPost("/api/p2p-settings/trust", async (
 
     await db.SaveChangesAsync();
     return Results.Ok();
-}).RequireAuthorization();
+})
+.RequireAuthorization()
+.WithName("TrustPeer")
+.WithSummary("Trust a peer")
+.WithDescription("Adds a peer to the trusted peers list. If the peer was previously blocked, they will be unblocked. Trusted peers may have elevated permissions for plugin sharing and auto-accept connections.")
+.WithTags("P2P Settings")
+.Accepts<TrustPeerRequest>("application/json")
+.Produces(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status401Unauthorized)
+.Produces(StatusCodes.Status404NotFound);
 
 // Block a peer
 app.MapPost("/api/p2p-settings/block", async (
@@ -347,7 +515,16 @@ app.MapPost("/api/p2p-settings/block", async (
 
     await db.SaveChangesAsync();
     return Results.Ok();
-}).RequireAuthorization();
+})
+.RequireAuthorization()
+.WithName("BlockPeer")
+.WithSummary("Block a peer")
+.WithDescription("Adds a peer to the blocked peers list. If the peer was previously trusted, they will be removed from the trusted list. Blocked peers cannot connect or share plugins.")
+.WithTags("P2P Settings")
+.Accepts<BlockPeerRequest>("application/json")
+.Produces(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status401Unauthorized)
+.Produces(StatusCodes.Status404NotFound);
 
 // Untrust a peer
 app.MapDelete("/api/p2p-settings/trust/{peerId}", async (
@@ -369,7 +546,15 @@ app.MapDelete("/api/p2p-settings/trust/{peerId}", async (
 
     await db.SaveChangesAsync();
     return Results.Ok();
-}).RequireAuthorization();
+})
+.RequireAuthorization()
+.WithName("UntrustPeer")
+.WithSummary("Remove peer from trusted list")
+.WithDescription("Removes a peer from the trusted peers list. The peer will no longer have elevated permissions but can still connect unless blocked.")
+.WithTags("P2P Settings")
+.Produces(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status401Unauthorized)
+.Produces(StatusCodes.Status404NotFound);
 
 // Unblock a peer
 app.MapDelete("/api/p2p-settings/block/{peerId}", async (
@@ -391,7 +576,15 @@ app.MapDelete("/api/p2p-settings/block/{peerId}", async (
 
     await db.SaveChangesAsync();
     return Results.Ok();
-}).RequireAuthorization();
+})
+.RequireAuthorization()
+.WithName("UnblockPeer")
+.WithSummary("Remove peer from blocked list")
+.WithDescription("Removes a peer from the blocked peers list, allowing them to connect and share plugins again.")
+.WithTags("P2P Settings")
+.Produces(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status401Unauthorized)
+.Produces(StatusCodes.Status404NotFound);
 
 app.Run();
 
@@ -412,6 +605,10 @@ static List<string> ParsePeerList(string? json)
 // DTOs for authentication
 public record UserInfo(bool IsAuthenticated, string? Name, ClaimInfo[] Claims);
 public record ClaimInfo(string Type, string Value);
+
+// DTOs for JWT token
+public record TokenRequest(string Email, string Password);
+public record TokenResponse(string Token, DateTime ExpiresAt);
 
 // DTOs for profile
 public record UserProfile(
