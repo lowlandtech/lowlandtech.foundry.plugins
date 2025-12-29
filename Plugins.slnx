@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LowlandTech.Foundry.PluginCore/LowlandTech.Foundry.PluginCore.csproj" />
+    <Project Path="src/LowlandTech.Foundry.Host/LowlandTech.Foundry.Host.csproj" />
+    <Project Path="src/LowlandTech.Foundry.SamplePlugin/LowlandTech.Foundry.SamplePlugin.csproj" />
+    <Project Path="src/LowlandTech.Foundry.PremiumTheme/LowlandTech.Foundry.PremiumTheme.csproj" />
+    <Project Path="src/LowlandTech.Foundry.AppHost/LowlandTech.Foundry.AppHost.csproj" />
+    <Project Path="src/LowlandTech.Foundry.ServiceDefaults/LowlandTech.Foundry.ServiceDefaults.csproj" />
+    <Project Path="src/LowlandTech.Foundry.Api/LowlandTech.Foundry.Api.csproj" />
+    <Project Path="src/LowlandTech.Foundry.P2P.Core/LowlandTech.Foundry.P2P.Core.csproj" />
+    <Project Path="src/LowlandTech.Foundry.P2P.WebRTC/LowlandTech.Foundry.P2P.WebRTC.csproj" />
+    <Project Path="src/LowlandTech.Foundry.P2P.Signaling/LowlandTech.Foundry.P2P.Signaling.csproj" />
+    <Project Path="src/LowlandTech.Foundry.P2P.Crdt/LowlandTech.Foundry.P2P.Crdt.csproj" />
+    <Project Path="src/LowlandTech.Foundry.Collaboration/LowlandTech.Foundry.Collaboration.csproj" />
+    <Project Path="src/LowlandTech.Foundry.Collaboration.UI/LowlandTech.Foundry.Collaboration.UI.csproj" />
+  </Folder>
+</Solution>

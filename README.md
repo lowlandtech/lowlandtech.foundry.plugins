@@ -26,6 +26,9 @@ You'll need:
 git clone https://github.com/lowlandtech/lowlandtech.foundry.plugins.git
 cd lowlandtech.foundry.plugins
 
+# Build the solution
+dotnet build Plugins.slnx
+
 # Start everything via Aspire
 dotnet run --project src/LowlandTech.Foundry.AppHost
 ```
@@ -234,7 +237,7 @@ The namespace is `LowlandTech.Foundry`. You'll want to change this to your own.
 **Rename the physical files:**
 ```bash
 # Rename solution file
-mv LowlandTech.Foundry.Plugins.sln YourCompany.YourProduct.sln
+mv Plugins.slnx YourProduct.slnx
 
 # Rename project folders (in src/)
 # LowlandTech.Foundry.Host → YourCompany.YourProduct.Host
@@ -246,7 +249,7 @@ mv LowlandTech.Foundry.Plugins.sln YourCompany.YourProduct.sln
 - Update project references to new names
 
 **Update the solution file:**
-- Edit `.sln` to reference renamed projects
+- Edit `.slnx` to reference renamed project paths
 
 ## 2. Remove What You Don't Need
 
