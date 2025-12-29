@@ -1,19 +1,43 @@
 # Examples
 
-Demonstration plugins that show how to use the plugin system. **Delete these for production** or use them as starting points for your own plugins.
+Demonstration plugins that show how to use the `IPlugin` architecture. **Delete these for production** or use them as starting points for your own plugins.
 
 ## Projects
 
 | Project | Description |
 |---------|-------------|
-| **SamplePlugin** | Example pages with menu items, submenus, and custom layouts |
-| **PremiumTheme** | Example theme plugin with custom color palettes |
+| **SamplePlugin** | `IPlugin` with `MenuFeature` - pages, submenus, custom layouts |
+| **PremiumTheme** | `IPlugin` with `ThemeFeature` - custom color palettes |
+
+Both implement the new `IPlugin` interface with lifecycle management and individually toggleable features.
 
 ## SamplePlugin
 
-Demonstrates the core plugin features:
+Demonstrates navigation plugins with `MenuFeature`:
 
-### Menu Registration
+### Plugin Implementation
+
+```csharp
+public class SamplePlugin : PluginBase
+{
+    public override PluginMetadata Metadata => new(
+        Id: "lowlandtech.sampleplugin",
+        Name: "Sample Plugin",
+        Description: "Demo plugin with navigation pages",
+        Version: new Version(1, 0, 0),
+        Author: "LowlandTech",
+        Tags: ["sample", "demo"]
+    );
+
+    protected override IEnumerable<IPluginFeature> CreateFeatures()
+    {
+        yield return new MenuFeature(this, "navigation",
+            "Navigation Menu", "Menu items", DiscoverMenuItems());
+    }
+}
+```
+
+### Menu Registration (on pages)
 
 ```csharp
 @page "/dashboard"
@@ -21,7 +45,7 @@ Demonstrates the core plugin features:
     Title = "Dashboard",
     Icon = Icons.Material.Filled.Dashboard,
     Location = MenuLocation.Sidebar,
-    Order = 100
+    Order = 10
 )]
 ```
 
@@ -32,8 +56,8 @@ Demonstrates the core plugin features:
 @attribute [MenuItem(Title = "Reports", Icon = Icons.Material.Filled.Assessment)]
 
 // Child items
-@attribute [MenuItem(Title = "Sales", ParentMenu = "Reports", Order = 1)]
-@attribute [MenuItem(Title = "Inventory", ParentMenu = "Reports", Order = 2)]
+@attribute [MenuItem(Title = "Sales", ParentMenu = "Reports", Order = 21)]
+@attribute [MenuItem(Title = "Inventory", ParentMenu = "Reports", Order = 22)]
 ```
 
 ### Custom Layouts
@@ -48,57 +72,66 @@ Demonstrates the core plugin features:
 - `Reports.razor` - Parent menu with children
 - `SalesReport.razor` - Submenu child
 - `InventoryReport.razor` - Submenu child
-- `Settings.razor` - Another sidebar page
+- `Settings.razor` - Topbar page
 - `FullScreen.razor` - Custom layout example
 
 ## PremiumTheme
 
-Demonstrates the theming system:
+Demonstrates theme plugins with `ThemeFeature`:
+
+### Plugin Implementation
+
+```csharp
+public class PremiumThemePlugin : PluginBase
+{
+    public override PluginMetadata Metadata => new(
+        Id: "lowlandtech.premiumtheme",
+        Name: "Premium Theme Pack",
+        Description: "Additional premium themes",
+        Version: new Version(1, 0, 0),
+        Author: "LowlandTech",
+        Tags: ["themes", "premium"]
+    );
+
+    protected override IEnumerable<IPluginFeature> CreateFeatures()
+    {
+        yield return new ThemeFeature(this, "amethyst", "Amethyst Theme",
+            "Purple-based theme", new AmethystTheme());
+        yield return new ThemeFeature(this, "midnight-gold", "Midnight Gold",
+            "Gold accent theme", new MidnightGoldTheme());
+        yield return new ThemeFeature(this, "rose-gold", "Rose Gold",
+            "Pink/rose theme", new RoseGoldTheme());
+    }
+}
+```
 
 ### Creating a Theme
 
 ```csharp
-public class MidnightGoldTheme : ThemeBase
+public class AmethystTheme : ThemeBase
 {
-    public override string Name => "midnight-gold";
-    public override string DisplayName => "Midnight Gold";
+    public override string Name => "amethyst";
+    public override string DisplayName => "Amethyst (Premium)";
 
-    public override Palette LightPalette => new()
+    public override PaletteLight LightPalette => new()
     {
-        Primary = "#1A237E",
-        Secondary = "#FFD700",
-        // ...
+        Primary = "#7c3aed",
+        Secondary = "#a855f7",
     };
 
-    public override Palette DarkPalette => new()
+    public override PaletteDark DarkPalette => new()
     {
-        Primary = "#3949AB",
-        Secondary = "#FFD700",
-        // ...
+        Primary = "#a78bfa",
+        Secondary = "#c084fc",
     };
-}
-```
-
-### Registering Themes
-
-```csharp
-public static class ServiceCollectionExtensions
-{
-    public static ThemingOptions AddPremiumThemes(this ThemingOptions options)
-    {
-        options.AddTheme<MidnightGoldTheme>();
-        options.AddTheme<RoseGoldTheme>();
-        options.AddTheme<AmethystTheme>();
-        return options;
-    }
 }
 ```
 
 ### Themes Included
 
-- `MidnightGoldTheme` - Deep blue with gold accents
-- `RoseGoldTheme` - Warm rose with gold accents
 - `AmethystTheme` - Purple/violet palette
+- `MidnightGoldTheme` - Dark with gold accents
+- `RoseGoldTheme` - Warm rose with copper highlights
 
 ## Using These as Templates
 
@@ -107,19 +140,39 @@ public static class ServiceCollectionExtensions
 1. Copy `SamplePlugin` folder
 2. Rename to `YourCompany.YourProduct.YourPlugin`
 3. Update namespace in all files
-4. Update `.csproj` file name and references
-5. Replace pages with your actual features
-6. Add to `Plugins.slnx`
-7. Reference from Host or load dynamically
+4. Update `PluginMetadata` in the plugin class
+5. Replace features in `CreateFeatures()` with your own
+6. Replace pages with your actual features
+7. Add to `Plugins.slnx`
+8. Register in Host: `options.AddAssemblyOf<YourPlugin>()`
 
 ### Creating Your Own Theme Pack
 
 1. Copy `PremiumTheme` folder
 2. Rename appropriately
-3. Replace theme classes with your brand colors
-4. Update the extension method
-5. Add to `Plugins.slnx`
-6. Call your extension method in Host's `Program.cs`
+3. Update `PluginMetadata` in the plugin class
+4. Replace theme classes with your brand colors
+5. Update `ThemeFeature` yields in `CreateFeatures()`
+6. Add to `Plugins.slnx`
+7. Register in Host: `options.AddAssemblyOf<YourThemePlugin>()`
+
+## Plugin Registration
+
+Both plugins are registered in Host's `Program.cs`:
+
+```csharp
+builder.Services.AddPlugins(options =>
+{
+    options.AddAssemblyOf<SamplePlugin>();
+    options.AddAssemblyOf<PremiumThemePlugin>();
+});
+```
+
+This enables:
+- Automatic discovery on startup
+- Lifecycle management (install, activate, disable)
+- Feature-level enable/disable
+- State persistence across restarts
 
 ## Removing Examples
 
@@ -133,8 +186,7 @@ dotnet sln Plugins.slnx remove src/examples/LowlandTech.Foundry.PremiumTheme
 # Delete the folder
 rm -rf src/examples
 
-# Remove references from Host's .csproj
-# Remove theme registration from Host's Program.cs
+# Update Host's Program.cs - remove AddAssemblyOf<> for these plugins
 ```
 
 Or just delete the entire `src/examples/` folder and update the solution file.

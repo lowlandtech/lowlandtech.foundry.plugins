@@ -6,9 +6,10 @@ The Blazor Server application - the main UI that users interact with. This proje
 
 Host is the runnable web application that:
 
-- Renders the MudBlazor UI with dynamic plugin-provided menus
+- Discovers and activates plugins via `IPluginManager`
+- Renders the MudBlazor UI with plugin-provided menus and themes
 - Handles user authentication via the API
-- Manages plugin loading and theme switching
+- Manages plugin lifecycle (install, activate, enable/disable features)
 - Provides the P2P settings UI and collaboration features
 - Serves as the Blazor Server entry point
 
@@ -24,6 +25,25 @@ Host is the runnable web application that:
 
 4. **Independent Scaling**: You might want to run multiple Host instances behind a load balancer while having a single API. Or scale the API horizontally while keeping a single Host.
 
+## Plugin Registration
+
+The Host registers plugins using the new `IPlugin` architecture:
+
+```csharp
+// Program.cs
+builder.Services.AddPlugins(options =>
+{
+    options.AddAssemblyOf<SamplePlugin>();
+    options.AddAssemblyOf<PremiumThemePlugin>();
+});
+```
+
+This enables:
+- Automatic plugin discovery on startup
+- `IEnumerable<IPlugin>` injectable anywhere
+- `IPluginManager` for lifecycle control
+- Plugin/feature state persistence
+
 ## Template Customization
 
 When using this repo as a template:
@@ -31,6 +51,7 @@ When using this repo as a template:
 - Modify `Components/Layout/MainLayout.razor` for your app shell
 - Update `wwwroot/` for your static assets
 - Configure services in `Program.cs` based on which features you need
+- Add your own plugins via `options.AddAssemblyOf<YourPlugin>()`
 - Remove P2P references if you don't need collaboration features
 
 ## Key Directories
@@ -46,11 +67,11 @@ When using this repo as a template:
 
 This project references almost everything - it's the integration point:
 
-- `PluginCore` - Plugin framework
+- `PluginCore` - Plugin framework (`IPlugin`, `IPluginManager`, themes, menus)
 - `ServiceDefaults` - Aspire integration
-- `Collaboration.UI` - P2P UI components
-- `P2P.Core`, `P2P.Crdt` - P2P infrastructure
-- `SamplePlugin`, `PremiumTheme` - Example plugins
+- `Collaboration` - P2P UI components
+- `P2P` - P2P networking infrastructure
+- `SamplePlugin`, `PremiumTheme` - Example plugins (implementing `IPlugin`)
 
 ## Should You Merge It?
 

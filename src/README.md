@@ -17,7 +17,7 @@ Contains everything that runs in the user's browser or is consumed by the UI:
 
 | Project | Purpose |
 |---------|---------|
-| **PluginCore** | Plugin framework - the shared contract between Host and plugins |
+| **PluginCore** | Plugin framework - `IPlugin`, `IPluginFeature`, `IPluginManager`, theming, and menu discovery |
 | **Host** | Blazor Server application - the main UI shell |
 | **P2P** | Peer-to-peer networking, CRDTs, and WebRTC transport |
 | **Collaboration** | Chat, documents, presence features + UI components |
@@ -43,10 +43,12 @@ Contains demonstration code that you'd remove in a real application:
 
 | Project | Purpose |
 |---------|---------|
-| **SamplePlugin** | Shows how to create plugins with menu items |
-| **PremiumTheme** | Shows how to create theme plugins |
+| **SamplePlugin** | Implements `IPlugin` with `MenuFeature` for navigation pages |
+| **PremiumTheme** | Implements `IPlugin` with `ThemeFeature` for custom themes |
 
 These exist to teach the plugin system. Delete them when building your own app, or use them as starting points for your actual plugins.
+
+Both example plugins demonstrate the new `IPlugin` architecture with lifecycle management and features that can be enabled/disabled at runtime.
 
 ## Benefits of This Organization
 

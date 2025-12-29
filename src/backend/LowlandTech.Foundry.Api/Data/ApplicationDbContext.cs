@@ -12,6 +12,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<UserP2PSettings> UserP2PSettings => Set<UserP2PSettings>();
 
+    public DbSet<PluginStateEntity> PluginStates => Set<PluginStateEntity>();
+
+    public DbSet<FeatureStateEntity> FeatureStates => Set<FeatureStateEntity>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -42,6 +46,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithOne()
                 .HasForeignKey<UserP2PSettings>(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PluginStateEntity>(entity =>
+        {
+            entity.HasKey(e => e.PluginId);
+            entity.Property(e => e.State).IsRequired();
+        });
+
+        builder.Entity<FeatureStateEntity>(entity =>
+        {
+            entity.HasIndex(e => e.PluginId);
         });
     }
 }

@@ -1,37 +1,85 @@
 # LowlandTech.Foundry.PremiumTheme
 
-A demonstration theme plugin - shows how to create themes that integrate with the theming system.
+A demonstration theme plugin - shows how to implement `IPlugin` with `ThemeFeature` for custom themes.
 
 ## What This Project Does
 
 PremiumTheme demonstrates the theming system:
 
-- Implements the `ITheme` interface from PluginCore
-- Provides custom color palettes (Sunset, Midnight, etc.)
-- Shows how themes can be bundled as plugins
-- Demonstrates runtime theme discovery and switching
+- **IPlugin Implementation**: `PremiumThemePlugin.cs` extends `PluginBase`
+- **ThemeFeature**: Each theme is a separate feature that can be enabled/disabled
+- **Custom Palettes**: Amethyst, Midnight Gold, Rose Gold themes
+- **Runtime Discovery**: Themes discovered and activated via `IPluginManager`
+
+## Plugin Implementation
+
+```csharp
+public class PremiumThemePlugin : PluginBase
+{
+    public override PluginMetadata Metadata => new(
+        Id: "lowlandtech.premiumtheme",
+        Name: "Premium Theme Pack",
+        Description: "Additional premium themes for Foundry",
+        Version: new Version(1, 0, 0),
+        Author: "LowlandTech",
+        Tags: ["themes", "premium", "ui"]
+    );
+
+    protected override IEnumerable<IPluginFeature> CreateFeatures()
+    {
+        yield return new ThemeFeature(this, "amethyst", "Amethyst Theme",
+            "Purple-based elegant theme", new AmethystTheme());
+
+        yield return new ThemeFeature(this, "midnight-gold", "Midnight Gold Theme",
+            "Luxurious dark theme with gold accents", new MidnightGoldTheme());
+
+        yield return new ThemeFeature(this, "rose-gold", "Rose Gold Theme",
+            "Warm pink and rose theme", new RoseGoldTheme());
+    }
+}
+```
 
 ## Why It's Standalone
 
 **Like SamplePlugin, this is intentionally separate:**
 
-1. **Theme Demonstration**: Shows themes as distributable packages that users can install.
+1. **Plugin Demonstration**: Shows themes as `IPlugin` implementations with `ThemeFeature`.
 
-2. **Monetization Example**: The "Premium" naming suggests a business model - free themes in the core, paid themes as plugins.
+2. **Feature Granularity**: Each theme is a separate feature - users can enable Amethyst but disable Rose Gold.
 
 3. **Optional Content**: Themes are personal preference. Users should be able to add/remove theme packs without touching the core app.
 
-4. **Plugin System Proof**: Proves that the theming system works with dynamically loaded assemblies, not just built-in themes.
+4. **Plugin System Proof**: Proves that the theming system works with the new `IPlugin` architecture.
+
+## Theme Features
+
+Each theme is wrapped in a `ThemeFeature`:
+
+```csharp
+yield return new ThemeFeature(
+    plugin: this,
+    id: "amethyst",
+    name: "Amethyst Theme",
+    description: "Purple-based elegant theme",
+    theme: new AmethystTheme()
+);
+```
+
+This allows:
+- Individual theme enable/disable via `IPluginManager`
+- State persistence (remembers which themes are active)
+- Query active themes: `plugins.GetActiveThemes()`
 
 ## Template Customization
 
 When using this repo as a template:
 
-**Creating your own themes:**
+**Creating your own theme plugin:**
 1. Create a new RCL project
 2. Add a reference to PluginCore
-3. Implement `ITheme` or extend `ThemeBase`
-4. Register your themes for discovery
+3. Create theme classes extending `ThemeBase`
+4. Create a plugin class extending `PluginBase`
+5. Yield `ThemeFeature` for each theme in `CreateFeatures()`
 
 **Using built-in themes only:**
 - Delete PremiumTheme project
@@ -40,20 +88,46 @@ When using this repo as a template:
 
 **Offering theme packs:**
 - Keep this pattern for premium/addon themes
-- Users install theme plugins like any other plugin
-- Themes appear in the theme picker automatically
+- Each theme as a separate `ThemeFeature` for granular control
+- Themes appear in the theme picker when their feature is enabled
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `Themes/SunsetTheme.cs` | Warm orange/red palette |
-| `Themes/MidnightTheme.cs` | Dark blue palette |
-| (other theme files) | Additional color schemes |
+| `PremiumThemePlugin.cs` | `IPlugin` implementation with `ThemeFeature` for each theme |
+| `Theming/AmethystTheme.cs` | Purple/violet color palette |
+| `Theming/MidnightGoldTheme.cs` | Dark with gold accents |
+| `Theming/RoseGoldTheme.cs` | Pink/rose with copper highlights |
+
+## Theme Structure
+
+```csharp
+public class AmethystTheme : ThemeBase
+{
+    public override string Name => "amethyst";
+    public override string DisplayName => "Amethyst (Premium)";
+
+    public override PaletteLight LightPalette => new()
+    {
+        Primary = "#7c3aed",
+        Secondary = "#a855f7",
+        // ...
+    };
+
+    public override PaletteDark DarkPalette => new()
+    {
+        Primary = "#a78bfa",
+        Secondary = "#c084fc",
+        // ...
+    };
+}
+```
 
 ## Dependencies
 
-- `PluginCore` - Theme interfaces
+- `PluginCore` - `IPlugin`, `PluginBase`, `ThemeFeature`, `ThemeBase`
+- `MudBlazor` - Palette types
 
 ## Should You Merge It?
 
@@ -61,34 +135,10 @@ When using this repo as a template:
 
 Like SamplePlugin, this is example content. In a real app, you either:
 
-1. **Delete it**: Use the built-in themes from PluginCore, or create your own theme project for your app's branding
+1. **Delete it**: Use the built-in themes from PluginCore, or create your own theme project
 
-2. **Repurpose it**: Rename it to something like `LowlandTech.YourApp.Themes` and put your actual brand themes here
+2. **Repurpose it**: Rename it to `YourCompany.YourApp.Themes` and add your brand themes
 
-3. **Keep the pattern**: If you plan to sell/distribute theme packs, this shows how to structure them
+3. **Keep the pattern**: If you plan to offer theme packs, this shows how to structure them with `IPlugin` and `ThemeFeature`
 
 **What NOT to do**: Don't merge themes into PluginCore or Host. Themes should be distributable units that users can install optionally.
-
----
-
-## Summary: Suggested Project Consolidation
-
-Based on writing these READMEs, here's a realistic simplification for the template:
-
-| Current (13 projects) | Suggested (8 projects) |
-|-----------------------|------------------------|
-| PluginCore | **PluginCore** (keep) |
-| Host | **Host** (keep) |
-| Api | **Api** (keep) |
-| AppHost | **AppHost** (keep, required by Aspire) |
-| ServiceDefaults | **ServiceDefaults** (keep or inline) |
-| P2P.Core | **P2P** (merge Core + WebRTC + Crdt) |
-| P2P.Crdt | ↑ merged |
-| P2P.WebRTC | ↑ merged |
-| P2P.Signaling | **P2P.Signaling** (keep, it's a service) |
-| Collaboration | **Collaboration** (merge logic + UI) |
-| Collaboration.UI | ↑ merged |
-| SamplePlugin | Delete or keep as example |
-| PremiumTheme | Delete or keep as example |
-
-This reduces from 13 to 8 core projects (or 6 if you remove the examples).

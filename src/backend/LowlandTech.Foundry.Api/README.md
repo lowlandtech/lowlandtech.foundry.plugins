@@ -8,8 +8,10 @@ Api provides:
 
 - **ASP.NET Core Identity**: User registration, login, password management
 - **Entity Framework Core**: Database access with PostgreSQL
+- **Plugin State Persistence**: Stores plugin/feature enabled states via `DatabasePluginStateStore`
 - **P2P Settings Persistence**: Stores user P2P preferences (trusted peers, discovery settings)
 - **REST Endpoints**: JSON APIs consumed by the Host
+- **Scalar API Documentation**: Interactive API docs with JWT bearer auth support
 
 ## Why It's Standalone
 
@@ -40,13 +42,46 @@ When using this repo as a template:
 | File | Purpose |
 |------|---------|
 | `Program.cs` | Service configuration and endpoint mapping |
-| `Data/ApplicationDbContext.cs` | EF Core context with Identity tables |
-| `Data/Entities/UserP2PSettings.cs` | P2P preferences per user |
+| `Data/ApplicationDbContext.cs` | EF Core context with Identity and plugin tables |
+| `Data/PluginStateEntity.cs` | Plugin state persistence entity |
+| `Data/FeatureStateEntity.cs` | Feature state persistence entity |
+| `Data/UserP2PSettings.cs` | P2P preferences per user |
+| `Services/DatabasePluginStateStore.cs` | EF Core implementation of `IPluginStateStore` |
+
+## Plugin State Persistence
+
+The API provides database persistence for plugin states:
+
+```csharp
+// Entities
+public class PluginStateEntity
+{
+    public string PluginId { get; set; }
+    public string State { get; set; }  // Discovered, Installed, Activated, Disabled, Error
+    public DateTime InstalledAt { get; set; }
+    public DateTime? ActivatedAt { get; set; }
+}
+
+public class FeatureStateEntity
+{
+    public string PluginId { get; set; }
+    public string FeatureId { get; set; }
+    public bool IsEnabled { get; set; }
+}
+```
+
+Register in Host to use database persistence:
+```csharp
+builder.Services.AddPluginStateStore<DatabasePluginStateStore>();
+builder.Services.AddPlugins(...);
+```
 
 ## Dependencies
 
 - `Aspire.Npgsql.EntityFrameworkCore.PostgreSQL` - Database access
 - `Microsoft.AspNetCore.Identity.EntityFrameworkCore` - User management
+- `PluginCore` - Plugin state store interfaces
+- `Scalar.AspNetCore` - API documentation
 - `ServiceDefaults` - OpenTelemetry, health checks, resilience
 
 ## Should You Merge It?

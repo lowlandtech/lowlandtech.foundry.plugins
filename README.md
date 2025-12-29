@@ -37,39 +37,109 @@ Aspire will spin up PostgreSQL in Docker, start the API, and launch the Host. Op
 
 ## How the Plugin System Works
 
-Plugins are just Razor Class Libraries (RCLs) with some attributes on their pages.
+The plugin system has two layers:
+
+1. **IPlugin Interface** - Full lifecycle management with features that can be enabled/disabled
+2. **Convention-based Discovery** - Attribute-based menu registration via `[MenuItem]`
+
+### The IPlugin Architecture
+
+Plugins implement `IPlugin` (or extend `PluginBase`) and expose capabilities via `IPluginFeature`:
+
+```csharp
+public class MyPlugin : PluginBase
+{
+    public override PluginMetadata Metadata => new(
+        Id: "mycompany.myplugin",
+        Name: "My Plugin",
+        Description: "Does cool stuff",
+        Version: new Version(1, 0, 0),
+        Author: "My Company",
+        Tags: ["feature", "demo"]
+    );
+
+    protected override IEnumerable<IPluginFeature> CreateFeatures()
+    {
+        yield return new ThemeFeature(this, "dark-mode", "Dark Mode",
+            "Custom dark theme", new MyDarkTheme());
+
+        yield return new MenuFeature(this, "navigation", "Navigation",
+            "Plugin menu items", GetMenuItems());
+    }
+}
+```
+
+**Plugin Lifecycle:**
+
+```
+Discovered → Installed → Activated ↔ Disabled
+                ↓
+              Error
+```
+
+- State persists in the database across restarts
+- Features can be individually enabled/disabled
+- Events fire on state changes (`PluginStateChanged`, `FeatureStateChanged`)
+
+**Inject plugins anywhere:**
+```csharp
+// Get all plugins
+public MyService(IEnumerable<IPlugin> plugins) { }
+
+// Get the plugin manager for lifecycle control
+public MyService(IPluginManager pluginManager)
+{
+    await pluginManager.ActivatePluginAsync("mycompany.myplugin");
+    await pluginManager.EnableFeatureAsync("mycompany.myplugin", "dark-mode");
+}
+```
 
 ### Creating a Plugin
 
 1. Create a new RCL project targeting `net10.0`
 2. Reference `LowlandTech.Foundry.PluginCore`
-3. Add `[MenuItem]` attributes to pages you want in the nav
+3. Implement `IPlugin` (or extend `PluginBase`)
+4. Create features using `ThemeFeature`, `MenuFeature`, or custom implementations
 
 ```csharp
-@page "/my-feature"
-@attribute [MenuItem(
-    Title = "My Feature",
-    Icon = Icons.Material.Filled.Star,
-    Location = MenuLocation.Sidebar,
-    Order = 100
-)]
+// MyPlugin.cs
+public class MyPlugin : PluginBase
+{
+    public override PluginMetadata Metadata => new(
+        Id: "mycompany.myplugin",
+        Name: "My Plugin",
+        Description: "A sample plugin",
+        Version: new Version(1, 0, 0),
+        Author: "My Company",
+        Tags: ["sample"]
+    );
 
-<h1>Hello from my plugin!</h1>
+    protected override IEnumerable<IPluginFeature> CreateFeatures()
+    {
+        // Theme feature
+        yield return new ThemeFeature(this, "custom-theme",
+            "Custom Theme", "A beautiful theme", new MyTheme());
+
+        // Menu feature with items
+        yield return new MenuFeature(this, "navigation",
+            "Navigation", "Plugin pages", new[]
+            {
+                new MenuItemInfo { Title = "Dashboard", Route = "/dashboard", Icon = "..." }
+            });
+    }
+}
 ```
-
-That's it. The plugin system scans for these attributes and builds the navigation automatically.
 
 ### Loading Plugins
 
-Plugins can be loaded three ways:
-
-**1. Direct Assembly Reference** (simplest, for dev)
+**1. Using AddPlugins()** (recommended)
 ```csharp
 // In Host's Program.cs
-builder.Services.AddPluginSystem(
-    builder.Configuration,
-    typeof(MyPlugin._Imports).Assembly
-);
+builder.Services.AddPlugins(options =>
+{
+    options.AddAssemblyOf<MyPlugin>();
+    options.AddAssemblyOf<AnotherPlugin>();
+});
 ```
 
 **2. From Folders** (drop DLLs in a folder)
@@ -98,10 +168,39 @@ builder.Services.AddPluginSystem(
 }
 ```
 
-### Menu Hierarchy
+### Plugin Features
 
-Pages can be nested under parent menus:
+Features are individual capabilities within a plugin that can be enabled/disabled:
 
+| Feature Type | Purpose |
+|-------------|---------|
+| `ThemeFeature` | Provides themes for the theme switcher |
+| `MenuFeature` | Provides navigation menu items |
+| Custom | Implement `IPluginFeature` for your own |
+
+```csharp
+// Enable/disable features at runtime
+await pluginManager.EnableFeatureAsync("mycompany.myplugin", "custom-theme");
+await pluginManager.DisableFeatureAsync("mycompany.myplugin", "navigation");
+```
+
+### Menu Items via Attributes
+
+Pages can use `[MenuItem]` attributes for automatic navigation discovery:
+
+```csharp
+@page "/my-feature"
+@attribute [MenuItem(
+    Title = "My Feature",
+    Icon = Icons.Material.Filled.Star,
+    Location = MenuLocation.Sidebar,
+    Order = 100
+)]
+
+<h1>Hello from my plugin!</h1>
+```
+
+Nested menus:
 ```csharp
 // Creates "Reports" parent with "Sales" and "Inventory" children
 @attribute [MenuItem(Title = "Sales", ParentMenu = "Reports", Order = 1)]
@@ -110,7 +209,31 @@ Pages can be nested under parent menus:
 
 ## Theming
 
-The theme system lets plugins provide custom themes. Themes are just classes implementing `ITheme`:
+Themes can be provided via `ThemeFeature` in plugins:
+
+```csharp
+public class MyThemePlugin : PluginBase
+{
+    public override PluginMetadata Metadata => new(
+        Id: "mycompany.themes",
+        Name: "Theme Pack",
+        Description: "Custom themes",
+        Version: new Version(1, 0, 0),
+        Author: "My Company",
+        Tags: ["themes"]
+    );
+
+    protected override IEnumerable<IPluginFeature> CreateFeatures()
+    {
+        yield return new ThemeFeature(this, "ocean", "Ocean Theme",
+            "Cool blue ocean theme", new OceanTheme());
+        yield return new ThemeFeature(this, "forest", "Forest Theme",
+            "Natural green theme", new ForestTheme());
+    }
+}
+```
+
+Theme classes implement `ITheme` (or extend `ThemeBase`):
 
 ```csharp
 public class MyTheme : ThemeBase
@@ -118,17 +241,15 @@ public class MyTheme : ThemeBase
     public override string Name => "my-theme";
     public override string DisplayName => "My Custom Theme";
 
-    public override Palette LightPalette => new()
+    public override PaletteLight LightPalette => new()
     {
         Primary = "#1976D2",
         Secondary = "#424242",
-        // ... other colors
     };
 
-    public override Palette DarkPalette => new()
+    public override PaletteDark DarkPalette => new()
     {
         Primary = "#90CAF9",
-        // ...
     };
 }
 ```
@@ -283,7 +404,35 @@ dotnet sln Plugins.slnx add src/examples/YourCompany.YourProduct.MyPlugin
 dotnet add src/examples/YourCompany.YourProduct.MyPlugin reference src/frontend/YourCompany.YourProduct.PluginCore
 ```
 
-Add a page with `[MenuItem]` and reference it in Host's `Program.cs`.
+Create a plugin class:
+```csharp
+// MyPlugin.cs
+public class MyPlugin : PluginBase
+{
+    public override PluginMetadata Metadata => new(
+        Id: "yourcompany.myplugin",
+        Name: "My Plugin",
+        Description: "My first plugin",
+        Version: new Version(1, 0, 0),
+        Author: "Your Company",
+        Tags: ["example"]
+    );
+
+    protected override IEnumerable<IPluginFeature> CreateFeatures()
+    {
+        yield return new MenuFeature(this, "nav", "Navigation",
+            "Menu items", DiscoverMenuItems());
+    }
+}
+```
+
+Register in Host's `Program.cs`:
+```csharp
+builder.Services.AddPlugins(options =>
+{
+    options.AddAssemblyOf<MyPlugin>();
+});
+```
 
 ## 6. Tips
 

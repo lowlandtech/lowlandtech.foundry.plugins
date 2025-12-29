@@ -21,9 +21,17 @@ builder.Services.AddRazorComponents()
 // Add MudBlazor
 builder.Services.AddMudServices();
 
-// Add plugin system with dynamic loading from configuration
-// The SamplePlugin assembly is included for backward compatibility
-// Additional plugins can be loaded from folders or NuGet via appsettings.json
+// Add the new plugin system with IPlugin discovery and lifecycle management
+// This enables dependency injection of IEnumerable<IPlugin> and IPluginManager
+builder.Services.AddPlugins(options =>
+{
+    // Add plugin assemblies to scan for IPlugin implementations
+    options.AddAssemblyOf<LowlandTech.Foundry.SamplePlugin.SamplePlugin>();
+    options.AddAssemblyOf<LowlandTech.Foundry.PremiumTheme.PremiumThemePlugin>();
+});
+
+// Add legacy plugin system for backward compatibility with [MenuItem] discovery
+// TODO: Migrate to new plugin system completely
 builder.Services.AddPluginSystem(
     builder.Configuration,
     typeof(LowlandTech.Foundry.SamplePlugin._Imports).Assembly
@@ -33,12 +41,13 @@ builder.Services.AddPluginSystem(
 builder.Services.AddScoped<IThemeStorageProvider, ThemeStorageProvider>();
 
 // Add theming with multiple themes
+// TODO: Themes will eventually come from activated IThemeFeature plugins
 builder.Services.AddFoundryTheming(options =>
 {
     options.AddTheme<DefaultTheme>();
     options.AddTheme<OceanTheme>();
     options.AddTheme<ForestTheme>();
-    options.AddPremiumThemes(); // Add premium themes from plugin
+    options.AddPremiumThemes(); // Add premium themes from plugin (legacy)
 });
 
 // Configure HttpClient for API communication with service discovery

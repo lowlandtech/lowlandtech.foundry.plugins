@@ -1,16 +1,95 @@
 using System.Reflection;
+using LowlandTech.Foundry.PluginCore.Abstractions;
 using LowlandTech.Foundry.PluginCore.Catalogs;
 using LowlandTech.Foundry.PluginCore.Configuration;
 using LowlandTech.Foundry.PluginCore.Services;
 using LowlandTech.Foundry.PluginCore.Theming;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace LowlandTech.Foundry.PluginCore.Extensions;
 
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Adds the new plugin system with IPlugin discovery and lifecycle management.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">Optional configuration callback.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddPlugins(
+        this IServiceCollection services,
+        Action<PluginSystemOptions>? configure = null)
+    {
+        var options = new PluginSystemOptions();
+        configure?.Invoke(options);
+
+        // Register in-memory state store by default (can be replaced with DB-backed store)
+        services.TryAddSingleton<IPluginStateStore, InMemoryPluginStateStore>();
+
+        // Register the plugin manager
+        services.AddSingleton<IPluginManager>(sp =>
+        {
+            var stateStore = sp.GetRequiredService<IPluginStateStore>();
+            var catalog = sp.GetService<IPluginCatalog>();
+            var logger = sp.GetService<ILogger<PluginManager>>();
+
+            return new PluginManager(
+                stateStore,
+                sp,
+                catalog,
+                options.AdditionalAssemblies,
+                logger);
+        });
+
+        // Register IEnumerable<IPlugin> so plugins can be injected
+        services.AddTransient<IEnumerable<IPlugin>>(sp =>
+        {
+            var manager = sp.GetRequiredService<IPluginManager>();
+            return manager.Plugins;
+        });
+
+        // Register a hosted service to discover and activate plugins
+        if (options.AutoDiscoverOnStartup)
+        {
+            services.AddHostedService<PluginDiscoveryHostedService>();
+        }
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds the new plugin system with assemblies for plugin discovery.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="pluginAssemblies">Assemblies to scan for IPlugin implementations.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddPlugins(
+        this IServiceCollection services,
+        params Assembly[] pluginAssemblies)
+    {
+        return services.AddPlugins(options =>
+        {
+            foreach (var assembly in pluginAssemblies)
+            {
+                options.AdditionalAssemblies.Add(assembly);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Registers a plugin state store implementation.
+    /// Call before AddPlugins() to override the default in-memory store.
+    /// </summary>
+    public static IServiceCollection AddPluginStateStore<TStore>(this IServiceCollection services)
+        where TStore : class, IPluginStateStore
+    {
+        services.AddSingleton<IPluginStateStore, TStore>();
+        return services;
+    }
+
     /// <summary>
     /// Adds the plugin system with dynamic loading from configuration
     /// </summary>
@@ -248,5 +327,114 @@ public class ThemingOptions
     {
         Themes.Add(theme);
         return this;
+    }
+}
+
+/// <summary>
+/// Options for configuring the plugin system.
+/// </summary>
+public class PluginSystemOptions
+{
+    /// <summary>
+    /// Additional assemblies to scan for IPlugin implementations.
+    /// </summary>
+    public List<Assembly> AdditionalAssemblies { get; } = [];
+
+    /// <summary>
+    /// Whether to automatically discover and install plugins on startup.
+    /// Default is true.
+    /// </summary>
+    public bool AutoDiscoverOnStartup { get; set; } = true;
+
+    /// <summary>
+    /// Whether to automatically activate installed plugins on startup.
+    /// Default is true.
+    /// </summary>
+    public bool AutoActivateOnStartup { get; set; } = true;
+
+    /// <summary>
+    /// Adds an assembly to scan for plugins.
+    /// </summary>
+    public PluginSystemOptions AddAssembly(Assembly assembly)
+    {
+        AdditionalAssemblies.Add(assembly);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds the assembly containing the specified type to scan for plugins.
+    /// </summary>
+    public PluginSystemOptions AddAssemblyOf<T>()
+    {
+        AdditionalAssemblies.Add(typeof(T).Assembly);
+        return this;
+    }
+}
+
+/// <summary>
+/// Hosted service that discovers and activates plugins on application startup.
+/// </summary>
+internal class PluginDiscoveryHostedService : Microsoft.Extensions.Hosting.IHostedService
+{
+    private readonly IPluginManager _pluginManager;
+    private readonly ILogger<PluginDiscoveryHostedService>? _logger;
+    private readonly bool _autoActivate;
+
+    public PluginDiscoveryHostedService(
+        IPluginManager pluginManager,
+        IServiceProvider serviceProvider,
+        ILogger<PluginDiscoveryHostedService>? logger = null)
+    {
+        _pluginManager = pluginManager;
+        _logger = logger;
+
+        // Check if auto-activate is configured (default true)
+        _autoActivate = true;
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        _logger?.LogInformation("Starting plugin discovery...");
+
+        try
+        {
+            // Discover all plugins
+            await _pluginManager.DiscoverPluginsAsync();
+
+            _logger?.LogInformation("Discovered {Count} plugins", _pluginManager.Plugins.Count);
+
+            if (_autoActivate)
+            {
+                // Install and activate discovered plugins
+                foreach (var plugin in _pluginManager.Plugins)
+                {
+                    try
+                    {
+                        if (plugin.State == PluginState.Discovered)
+                        {
+                            await _pluginManager.InstallPluginAsync(plugin.Metadata.Id);
+                        }
+
+                        if (plugin.State == PluginState.Installed)
+                        {
+                            await _pluginManager.ActivatePluginAsync(plugin.Metadata.Id);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to activate plugin: {PluginId}", plugin.Metadata.Id);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed during plugin discovery");
+        }
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
     }
 }
